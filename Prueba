@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Element Park · Control de cierres</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com; connect-src 'self' https://dolarapi.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
+<style>
+:root{
+  /* Bajo Cero = gama de azules */
+  --bc-900:#0a2559;--bc-700:#1347a3;--bc-600:#1d5fd0;--bc-500:#3b82f6;--bc-300:#93c2ff;--bc-100:#e7f0ff;--bc-50:#f3f8ff;
+  /* Arboris = gama de verdes */
+  --ar-900:#0d3a21;--ar-700:#17733f;--ar-600:#1f8f50;--ar-500:#34b26a;--ar-300:#94dcb0;--ar-100:#e3f6ea;--ar-50:#f2fbf5;
+  --ink:#152033;--ink-2:#334155;--muted:#6b7a90;--line:#e2e8f0;--line-2:#eef2f7;--bg:#f3f5f9;--card:#ffffff;
+  --ok:#15803d;--bad:#c2410c;--warn:#b45309;--calc:#f1f4f8;
+  --radius:16px;--shadow:0 1px 2px rgba(16,24,40,.04),0 6px 20px rgba(16,24,40,.06);
+  --font:"Inter","Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+.num,td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hidden{display:none!important}
+a{color:var(--bc-600)}
+/* ---------- Encabezado ---------- */
+header.top{background:linear-gradient(115deg,var(--bc-900) 0%,#0f3570 45%,#0f4a3a 78%,var(--ar-900) 100%);color:#fff;position:sticky;top:0;z-index:40;box-shadow:0 4px 18px rgba(10,20,40,.25)}
+.top-inner{max-width:1500px;margin:auto;padding:14px 22px 0;display:flex;flex-wrap:wrap;align-items:center;gap:14px}
+.brand{display:flex;align-items:center;gap:12px;flex:1;min-width:260px}
+.logo{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:linear-gradient(135deg,var(--bc-500),var(--ar-500));font-weight:800;letter-spacing:-.5px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.25)}
+.brand h1{font-size:19px;margin:0;letter-spacing:-.2px}
+.brand p{margin:2px 0 0;font-size:12.5px;opacity:.78}
+.period{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:6px 8px 6px 12px;border-radius:12px}
+.period label{font-size:12px;opacity:.85}
+.period select{background:#fff;color:var(--ink);border:0;border-radius:8px;padding:6px 8px;font-weight:600}
+.save-state{font-size:12px;opacity:.85;display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#4ade80;display:inline-block}
+.dot.busy{background:#facc15}.dot.err{background:#f87171}
+nav.tabs{max-width:1500px;margin:auto;padding:10px 16px 0;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav.tabs button{background:transparent;border:0;color:#dbe7ff;padding:10px 16px;border-radius:12px 12px 0 0;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;gap:7px;align-items:center}
+nav.tabs button:hover{background:rgba(255,255,255,.08);color:#fff}
+nav.tabs button.active{background:var(--bg);color:var(--ink)}
+nav.tabs .ic{font-size:15px;opacity:.9}
+main{max-width:1500px;margin:auto;padding:22px}
+/* ---------- Tarjetas ---------- */
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:4px 0 18px}
+.page-head h2{margin:0;font-size:24px;letter-spacing:-.4px}
+.page-head p{margin:4px 0 0;color:var(--muted);max-width:760px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g-auto{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.span2{grid-column:span 2}.span-all{grid-column:1/-1}
+@media(max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.g2,.g3,.g4{grid-template-columns:1fr}.span2{grid-column:auto}main{padding:14px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px 18px 16px;min-width:0;position:relative}
+.card h3{margin:0 0 4px;font-size:15.5px;letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
+.card .sub{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+.card.bc{border-top:4px solid var(--bc-600)}.card.ar{border-top:4px solid var(--ar-600)}
+.card.mix{border-top:4px solid transparent;border-image:linear-gradient(90deg,var(--bc-600),var(--ar-600)) 1;border-image-slice:1}
+.card.mix{border-radius:0 0 var(--radius) var(--radius)}
+.tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
+.tag.bc{background:var(--bc-100);color:var(--bc-700)}.tag.ar{background:var(--ar-100);color:var(--ar-700)}
+.tag.gray{background:#eef1f6;color:#4b5a70}.tag.warn{background:#fff3e0;color:#9a4b00}.tag.bad{background:#fde8e1;color:#a3330b}.tag.ok{background:#dcf5e6;color:#11602f}
+.kpi{border-radius:14px;padding:14px 16px;border:1px solid var(--line);background:#fff;min-width:0}
+.kpi .l{font-size:12px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;gap:6px}
+.kpi .v{font-size:23px;font-weight:750;letter-spacing:-.5px;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.kpi .d{font-size:12px;margin-top:3px;color:var(--muted)}
+.kpi.bc{background:linear-gradient(160deg,var(--bc-50),#fff 70%);border-color:#d5e5ff}.kpi.bc .v{color:var(--bc-900)}
+.kpi.ar{background:linear-gradient(160deg,var(--ar-50),#fff 70%);border-color:#cdeedb}.kpi.ar .v{color:var(--ar-900)}
+.kpi.dark{background:linear-gradient(135deg,#132544,#123a35);color:#fff;border:0}.kpi.dark .l,.kpi.dark .d{color:#c9d6ea}
+.up{color:var(--ok)!important}.down{color:var(--bad)!important}
+/* ---------- Tablas ---------- */
+.tbl-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;max-width:100%}
+.tbl-wrap.tall{max-height:62vh}
+table.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13px}
+.tbl th{position:sticky;top:0;z-index:2;background:#f7f9fc;color:#475569;font-weight:650;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;text-align:left;padding:10px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:8px 10px;border-bottom:1px solid var(--line-2);vertical-align:middle}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tbody tr:hover td{background:#fafcff}
+.tbl td.calc,.tbl th.calc{background:var(--calc)}
+.tbl th.calc::after{content:" ƒ";color:#94a3b8;font-style:italic;text-transform:none}
+.tbl tr.row-bc td:first-child{box-shadow:inset 4px 0 0 var(--bc-500)}
+.tbl tr.row-ar td:first-child{box-shadow:inset 4px 0 0 var(--ar-500)}
+.tbl tr.tot td{font-weight:700;background:#f5f7fb;border-top:1px solid var(--line)}
+.tbl tr.res td{font-weight:750;background:#eef4ff}
+.tbl.ar-theme tr.res td{background:#eaf8ef}
+.tbl tr.grp td{font-weight:650;cursor:pointer}
+.tbl tr.grp td:first-child::before{content:"▸ ";color:var(--muted)}
+.tbl tr.grp.open td:first-child::before{content:"▾ "}
+.tbl tr.sub td:first-child{padding-left:28px;color:var(--ink-2)}
+.tbl tr.head td{font-weight:800;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.06em;background:#fff}
+.tbl td.sel,.tbl th.sel{background:#fff8db!important}
+.tbl .muted{color:var(--muted)}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:650;background:#eef1f6;color:#475569;white-space:nowrap}
+.pill.bc{background:var(--bc-100);color:var(--bc-700)}.pill.ar{background:var(--ar-100);color:var(--ar-700)}
+.pill.warn{background:#fff1dc;color:#9a4b00}.pill.ok{background:#dcf5e6;color:#11602f}.pill.bad{background:#fde5dc;color:#a3330b}
+/* ---------- Controles ---------- */
+.btn{border:1px solid transparent;border-radius:10px;padding:8px 14px;font-weight:650;cursor:pointer;background:var(--bc-600);color:#fff;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{filter:brightness(1.07)}
+.btn.ghost{background:#fff;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{background:#f7f9fc}
+.btn.green{background:var(--ar-600)}.btn.danger{background:#fff;color:#b42318;border-color:#f3c4bd}
+.btn.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-size:12px;font-weight:650;color:var(--ink-2)}
+.field small{color:var(--muted);font-size:11.5px}
+input.in,select.in,textarea.in{border:1px solid #d6dde8;background:#fff;border-radius:10px;padding:8px 10px;width:100%;min-width:0}
+input.in:focus,select.in:focus,textarea.in:focus{outline:2px solid var(--bc-300);border-color:var(--bc-500)}
+input.cell{border:1px solid transparent;background:transparent;border-radius:6px;padding:4px 6px;width:110px;text-align:right;font-variant-numeric:tabular-nums}
+input.cell:hover{border-color:#d6dde8;background:#fff}input.cell:focus{border-color:var(--bc-500);background:#fff;outline:none}
+.seg{display:inline-flex;background:#e9edf4;border-radius:11px;padding:3px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 14px;border-radius:9px;font-weight:650;cursor:pointer;color:#475569}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.seg button.on.bc{color:var(--bc-700)}.seg button.on.ar{color:var(--ar-700)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 12px;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px;min-width:150px}
+.chip b{font-size:13.5px}.chip span{font-size:11.5px;color:var(--muted)}
+.chip.on{border-color:var(--bc-500);box-shadow:0 0 0 3px var(--bc-100)}
+.note{background:#f6f9ff;border:1px solid #dbe7fb;color:#2b3f63;border-radius:12px;padding:10px 13px;font-size:12.8px}
+.note.green{background:#f3fbf6;border-color:#cfeedd;color:#1d4d33}
+.note.warn{background:#fff8ec;border-color:#f6dcb1;color:#7a4300}
+.status{font-size:12.5px;color:var(--muted);min-height:18px}
+.status.ok{color:var(--ok)}.status.err{color:var(--bad)}
+.list{display:flex;flex-direction:column}
+.list .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.list .it:last-child{border-bottom:0}
+.list .it .k{color:var(--ink-2);display:flex;gap:8px;align-items:center;min-width:0}
+.list .it .v{font-weight:650;font-variant-numeric:tabular-nums;text-align:right}
+.list .it .v small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.bar{height:8px;border-radius:999px;background:#eef1f6;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.chart-box{position:relative;height:300px}
+.chart-box.sm{height:220px}.chart-box.lg{height:360px}
+.empty{padding:22px;text-align:center;color:var(--muted)}
+.split{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.fx{font-size:30px;font-weight:800;letter-spacing:-.8px;font-variant-numeric:tabular-nums}
+.fx small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:0}
+.fx-row{display:flex;gap:18px;flex-wrap:wrap}
+.flow{display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;align-items:stretch;gap:0}
+.flow .col{display:flex;flex-direction:column;gap:8px}
+.flow .arrow{display:grid;place-items:center;color:#94a3b8;font-size:22px}
+.flow .box{border:1px solid var(--line);border-radius:12px;padding:9px 11px;background:#fff;font-size:12.8px}
+.flow .box b{display:block;font-size:13px}
+.flow .box.in{border-left:4px solid #64748b}.flow .box.cfg{border-left:4px solid #a855f7}.flow .box.out{border-left:4px solid var(--bc-600)}
+@media(max-width:900px){.flow{grid-template-columns:1fr}.flow .arrow{transform:rotate(90deg);height:30px}}
+dialog{border:0;border-radius:18px;padding:0;max-width:920px;width:96%;box-shadow:0 30px 80px rgba(10,20,40,.35)}
+dialog::backdrop{background:rgba(12,22,40,.45)}
+.dlg-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.dlg-h h3{margin:0}
+.dlg-b{padding:18px 20px;max-height:68vh;overflow:auto}
+.dlg-f{padding:14px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:#fafbfd}
+.fs{border:1px solid var(--line);border-radius:12px;padding:12px 14px 14px;margin:0 0 12px}
+.fs legend{font-weight:700;font-size:12.5px;padding:0 6px;color:var(--ink-2)}
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.calc-preview{display:flex;gap:10px;flex-wrap:wrap}
+.calc-preview .kpi{padding:10px 12px;background:var(--calc);border-style:dashed}
+.calc-preview .kpi .v{font-size:16px}
+body:not(.authed) .needs-auth{display:none!important}
+body:not(.authed) header.top{position:static;box-shadow:none;background:transparent}
+body:not(.authed){background:linear-gradient(135deg,#0a2559 0%,#0f3570 40%,#0f4a3a 75%,#0d3a21 100%);min-height:100vh}
+body.authed #gate{display:none}
+#gate{min-height:calc(100vh - 90px);display:grid;place-items:center;padding:24px}
+.gate-card{background:#fff;border-radius:22px;box-shadow:0 30px 80px rgba(0,0,0,.35);padding:34px 32px;max-width:440px;width:100%;text-align:center}
+.gate-card h1{margin:10px 0 8px;font-size:26px;letter-spacing:-.5px;color:#0a2559}
+.gate-card p{color:var(--muted);margin:0 0 18px}
+.gate-card form{text-align:left;margin-top:6px}
+.gate-logo{width:56px;height:56px;margin:0 auto;font-size:20px;color:#fff}
+.gate-lock{font-size:34px;margin-top:12px}
+.user-box{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.user-box .btn.ghost{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}
+.legend-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
+@media print{header.top,nav.tabs,.toolbar,.btn{display:none!important}body{background:#fff}.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="logo">EP</div>
+      <div><h1>Element Park · Control de cierres</h1><p><span style="color:var(--bc-300)">● Bajo Cero S.R.L.</span> &nbsp; <span style="color:var(--ar-300)">● Arboris S.R.L.</span></p></div>
+    </div>
+    <div class="period needs-auth">
+      <label for="gMonth">Mes de cierre</label>
+      <select id="gMonth"></select>
+      <span id="gYear" style="font-weight:700"></span>
+    </div>
+    <div class="save-state needs-auth"><span id="saveDot" class="dot"></span><span id="saveTxt">Listo</span></div>
+    <div class="user-box needs-auth"><span id="whoami"></span><button id="logoutBtn" class="btn ghost sm" type="button">Salir</button></div>
+  </div>
+  <nav class="tabs needs-auth" id="tabs"></nav>
+</header>
+
+<section id="gate">
+  <div class="gate-card">
+    <div class="logo gate-logo">EP</div>
+    <div class="gate-lock">🔒</div>
+    <h1>Usuario no registrado</h1>
+    <p id="gateMsg">Esta página es de uso interno de Element Park. Solo pueden ingresar usuarios registrados con su correo y contraseña.</p>
+    <button id="gateLoginBtn" class="btn ghost sm" type="button">Soy usuario registrado · Ingresar</button>
+    <form id="loginForm" class="hidden" autocomplete="on">
+      <div class="field"><label for="lgEmail">Correo electrónico</label><input class="in" id="lgEmail" type="email" autocomplete="username" required></div>
+      <div class="field" style="margin-top:10px"><label for="lgPass">Contraseña</label><input class="in" id="lgPass" type="password" autocomplete="current-password" required></div>
+      <button class="btn" style="width:100%;margin-top:16px;justify-content:center" type="submit">Iniciar sesión</button>
+    </form>
+    <p id="lgStatus" class="status"></p>
+  </div>
+</section>
+
+<main id="app" class="needs-auth">
+  <section id="pg-inicio" class="page"></section>
+  <section id="pg-registros" class="page hidden"></section>
+  <section id="pg-cambio" class="page hidden"></section>
+  <section id="pg-estado" class="page hidden"></section>
+  <section id="pg-resultados" class="page hidden"></section>
+  <section id="pg-pasajeros" class="page hidden"></section>
+  <section id="pg-config" class="page hidden"></section>
+</main>
+<footer class="needs-auth">Element Park · Bajo Cero (azules) · Arboris (verdes) · Los cálculos replican las fórmulas de la planilla «Cierres Element Park».</footer>
+
+<dialog id="dlg"><form method="dialog" id="dlgForm" novalidate>
+  <div class="dlg-h"><h3 id="dlgTitle">Registro</h3><button class="btn ghost sm" value="cancel" type="submit">✕</button></div>
+  <div class="dlg-b" id="dlgBody"></div>
+  <div class="dlg-f"><span id="dlgMsg" class="status" style="flex:1"></span><button class="btn ghost" value="cancel" type="submit">Cancelar</button><button class="btn" id="dlgSave" value="default" type="button">Guardar</button></div>
+</form></dialog>
+<dialog id="pwdDlg"><form method="dialog" id="pwdForm">
+  <div class="dlg-h"><h3 id="pwTitle">Cambiar contraseña</h3><button class="btn ghost sm" value="cancel" type="submit">✕</button></div>
+  <div class="dlg-b"><div class="field"><label>Nueva contraseña (mínimo 8 caracteres)</label><input class="in" type="text" id="pw1" autocomplete="off"><small>Pasásela a la persona por un medio privado.</small></div>
+  <div class="field" style="margin-top:10px"><label>Repetir contraseña</label><input class="in" type="text" id="pw2" autocomplete="off"></div></div>
+  <div class="dlg-f"><span id="pwMsg" class="status" style="flex:1"></span><button class="btn ghost" value="cancel" type="submit">Cancelar</button><button class="btn" id="pwSave" type="button">Guardar</button></div>
+</form></dialog>
+<input type="file" id="fileXlsx" accept=".xlsx,.xls,.xlsm" class="hidden">
+<input type="file" id="fileJson" accept=".json,application/json" class="hidden">
+
+<script>
+"use strict";
+/* =====================================================================
+   ACCESO SOLO PARA USUARIOS REGISTRADOS (Supabase)
+   1) Ejecutá el script «element_park_supabase.sql» en el SQL Editor de tu proyecto Supabase.
+   2) Pegá abajo la URL del proyecto y la clave pública (anon / publishable).
+   Sin sesión válida, la página solo muestra «Usuario no registrado».
+   Los datos NO están dentro de este archivo: viven en Supabase, protegidos por RLS.
+   ===================================================================== */
+const CONFIG={
+  SUPABASE_URL:"",      // ej. "https://xxxxxxxx.supabase.co"
+  SUPABASE_KEY:"",      // clave pública anon / publishable (nunca la service_role)
+  TABLA:"element_park_state",
+  USUARIOS:"ep_usuarios"
+};
+
+/*ENGINE-START*/
+/* ===== MOTOR DE CÁLCULO: replica las fórmulas del Excel "Cierres Element Park" ===== */
+const MESES=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MES3=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const SOC_BC="Bajo Cero", SOC_AR="Arboris";
+const GRUPOS_GASTO={"Bajo Cero":["Bar Frío","Bar Cálido","Fotografía","Bajo Cero","Expensas"],"Arboris":["Fly Park","Arboris","Expensas"]};
+const NO_GASTO=["Entre sociedades","Otras cuentas del grupo","Cta. cte. socios","Inversiones y mejoras"];
+const n=v=>{const x=typeof v==="number"?v:parseFloat(String(v??"").replace(",","."));return Number.isFinite(x)?x:0;};
+const blank=v=>v===undefined||v===null||v==="";
+const parseD=s=>{if(!s)return null;const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?{y:+m[1],m:+m[2],d:+m[3]}:null;};
+const E={
+  tcUsd(S,m){return n(S.tc?.[m-1]?.usd);},
+  tcBrl(S,m){return n(S.tc?.[m-1]?.brl);},
+  socDeUnidad(S,u){const x=(S.units||[]).find(z=>z.unidad===u);return x?x.soc:"";},
+  monedaCuenta(S,soc,cta){const x=(S.cuentas||[]).find(z=>z.soc===soc&&z.cuenta===cta);return x?x.moneda:"";},
+  planDe(S,imp,tipo){return (S.plan||[]).find(p=>p.imput===imp&&p.tipo===tipo);},
+  /* Diario: columnas grises */
+  diario(S,r){
+    const d=parseD(r.fecha);const mes=d?d.m:0,anio=d?d.y:0;
+    const tickets=["may","men","agMay","agMen","te2040","te41","atMay","atMen","voucher"].reduce((a,k)=>a+n(r[k]),0);
+    const efeR$=n(r.efeR)*E.tcBrl(S,mes), efeUsd$=n(r.efeUSD)*E.tcUsd(S,mes);
+    const ingresos=n(r.efe)+efeR$+efeUsd$+n(r.tarjeta)+n(r.pweb);
+    return {soc:E.socDeUnidad(S,r.unidad)||"⚠ unidad",tickets,ingresos,efeR$,efeUsd$,mes,anio,pax:tickets+n(r.menFree)+n(r.liberados),fotos:n(r.fotosImp)+n(r.fotosDig)};
+  },
+  /* Gastos: monto en $, % BC aplicado, reparto y control */
+  gasto(S,r){
+    const d=parseD(r.fecha);const mes=d?d.m:0,anio=d?d.y:0;
+    const ars=r.moneda==="USD"?n(r.monto)*E.tcUsd(S,mes):r.moneda==="R$"?n(r.monto)*E.tcBrl(S,mes):n(r.monto);
+    const p=E.planDe(S,r.imput,r.tipo);let pct=null,regla="";
+    if(!blank(r.pctManual)){pct=n(r.pctManual);regla="Manual";}
+    else if(p){if(typeof p.pct==="number"){pct=p.pct;regla="Plan de cuentas";}else{pct=r.paga===SOC_BC?1:0;regla="Paga";}}
+    const bc=pct===null?0:ars*pct, ar=pct===null?0:ars-bc;
+    const control=!p?"⚠ Imputación/tipo no existe":blank(r.pedido)?"⚠ Falta Nº de pedido":!blank(r.pctManual)?"Excepción al reparto":"OK";
+    return {ars,pct,regla,bc,ar,mes,anio,control};
+  },
+  saldo(S,r){
+    const d=parseD(r.fecha);const mes=d?d.m:0,anio=d?d.y:0;
+    const moneda=E.monedaCuenta(S,r.soc,r.cuenta)||"⚠ cuenta";
+    const usd=moneda==="USD"?n(r.saldo):(moneda==="R$"?n(r.saldo)*E.tcBrl(S,mes):n(r.saldo))/(E.tcUsd(S,mes)||NaN);
+    return {moneda,usd:Number.isFinite(usd)?usd:0,mes,anio};
+  },
+  pendiente(S,r){
+    const d=parseD(r.vto);const mes=d?d.m:12;
+    const ars=r.moneda==="USD"?n(r.monto)*E.tcUsd(S,mes):r.moneda==="R$"?n(r.monto)*E.tcBrl(S,mes):n(r.monto);
+    return {ars,mes};
+  },
+  /* Sumas por mes */
+  ingresosUnidad(S,u,m,y=S.year){return S.diario.reduce((a,r)=>{const c=E.diario(S,r);return a+(r.unidad===u&&c.mes===m&&c.anio===y?c.ingresos:0);},0);},
+  diarioSum(S,u,m,campo,y=S.year){return S.diario.reduce((a,r)=>{const c=E.diario(S,r);if(r.unidad!==u||c.mes!==m||c.anio!==y)return a;return a+(campo in c?c[campo]:n(r[campo]));},0);},
+  gastoSum(S,soc,m,filtro,y=S.year){const k=soc===SOC_BC?"bc":"ar";return S.gastos.reduce((a,r)=>{const c=E.gasto(S,r);return a+(c.mes===m&&c.anio===y&&filtro(r,c)?c[k]:0);},0);},
+  tiposDe(S,imp){return (S.plan||[]).filter(p=>p.imput===imp).map(p=>p.tipo);},
+  /* Resultado de gestión por sociedad (hojas Resultado BC / Resultado Arboris) */
+  resultado(S,soc){
+    const M=[...Array(12)].map((_,i)=>i+1), rows=[];
+    const unidades=(S.units||[]).filter(u=>u.soc===soc).map(u=>u.unidad);
+    const ing=unidades.map(u=>({label:"Ingresos "+u,unidad:u,vals:M.map(m=>E.ingresosUnidad(S,u,m))}));
+    const totIng=M.map((_,i)=>ing.reduce((a,r)=>a+r.vals[i],0));
+    rows.push({label:"Ingresos",kind:"head"});ing.forEach(r=>rows.push({...r,kind:"item"}));rows.push({label:"Total ingresos",kind:"total",vals:totIng});
+    rows.push({label:"Gastos",kind:"head"});
+    const grupos=GRUPOS_GASTO[soc].map(g=>{
+      const items=E.tiposDe(S,g).map(t=>({label:t,vals:M.map(m=>E.gastoSum(S,soc,m,r=>r.imput===g&&r.tipo===t))}));
+      return {label:g,items,vals:M.map((_,i)=>items.reduce((a,x)=>a+x.vals[i],0))};
+    });
+    grupos.forEach(g=>{rows.push({label:g.label,kind:"group",vals:g.vals});g.items.forEach(it=>rows.push({...it,kind:"sub",grupo:g.label}));});
+    const totG=M.map((_,i)=>grupos.reduce((a,g)=>a+g.vals[i],0));
+    rows.push({label:"Total gastos",kind:"total",vals:totG});
+    const res=M.map((_,i)=>totIng[i]-totG[i]);
+    const inv=M.map(m=>E.gastoSum(S,soc,m,r=>r.imput==="Inversiones y mejoras"));
+    const saldo=M.map((_,i)=>res[i]-inv[i]);
+    const tc=M.map(m=>E.tcUsd(S,m));
+    const usd=M.map((_,i)=>tc[i]?saldo[i]/tc[i]:0);
+    rows.push({label:"Resultado del período",kind:"result",vals:res});
+    rows.push({label:"Inversiones y mejoras",kind:"item",vals:inv});
+    rows.push({label:"Saldo (resultado − inversiones)",kind:"result",vals:saldo});
+    rows.push({label:"TC USD del mes",kind:"tc",vals:tc});
+    rows.push({label:"Saldo en dólares",kind:"usd",vals:usd});
+    let acc=0,accU=0;
+    rows.push({label:"Saldo acumulado",kind:"acc",vals:saldo.map(v=>acc+=v)});
+    rows.push({label:"Saldo acumulado en dólares",kind:"accusd",vals:usd.map(v=>accU+=v)});
+    return {rows,totIng,totG,res,inv,saldo,usd,tc};
+  },
+  pasajerosMes(S,u,y,m){
+    const h=(S.pasajeros||[]).find(p=>p.unidad===u&&p.anio===y);
+    const v=h?h.m[m-1]:null;
+    if(typeof v==="number")return v;
+    if(u==="PN Iguazú"){const s=(S.pnDiario||[]).reduce((a,r)=>{const d=parseD(r.fecha);return a+(d&&d.y===y&&d.m===m?n(r.pax):0);},0);return s;}
+    return E.diarioSum(S,u,m,"tickets",y);
+  },
+  equilibrio(S,soc){
+    const R=E.resultado(S,soc),k=soc===SOC_BC?"bc":"ar",u=soc===SOC_BC?"Icebar":"Fly Park";
+    const pe=S.pe?.[k]||{precio:[],cv:[]};
+    const cf=R.totG,precio=[...Array(12)].map((_,i)=>n(pe.precio[i])),cv=[...Array(12)].map((_,i)=>n(pe.cv[i]));
+    const pePax=cf.map((c,i)=>c===0?0:(precio[i]-cv[i])?c/(precio[i]-cv[i]):0);
+    const pax=[...Array(12)].map((_,i)=>E.pasajerosMes(S,u,S.year,i+1));
+    const avg=a=>{const p=a.filter(x=>x>0);return p.length?p.reduce((s,x)=>s+x,0)/p.length:0;};
+    return {cf,precio,cv,pePax,pax,avg:{cf:avg(cf),precio:avg(precio),cv:avg(cv),pePax:avg(pePax),pax:avg(pax)}};
+  },
+  entreSociedades(S){
+    const M=[...Array(12)].map((_,i)=>i+1);
+    const a=M.map(m=>S.gastos.reduce((s,r)=>{const c=E.gasto(S,r);return s+(r.paga===SOC_BC&&c.mes===m&&c.anio===S.year?c.ar:0);},0));
+    const b=M.map(m=>S.gastos.reduce((s,r)=>{const c=E.gasto(S,r);return s+(r.paga===SOC_AR&&c.mes===m&&c.anio===S.year?c.bc:0);},0));
+    const t=(soc)=>M.map(m=>S.gastos.reduce((s,r)=>{const c=E.gasto(S,r);return s+(r.paga===soc&&r.imput==="Entre sociedades"&&c.mes===m&&c.anio===S.year?c.ars:0);},0));
+    const c=t(SOC_BC),d=t(SOC_AR);
+    const neto=M.map((_,i)=>a[i]-b[i]+c[i]-d[i]);let acc=n(S.esInicial);
+    const saldo=neto.map(v=>acc+=v);
+    const quien=saldo.map(v=>Math.round(v)===0?"Sin saldo":v>0?"Arboris debe a BC":"BC debe a Arboris");
+    return {a,b,c,d,neto,saldo,quien};
+  },
+  saldosMes(S,m){
+    const rows=S.saldos.filter(r=>{const c=E.saldo(S,r);return c.mes===m&&c.anio===S.year;});
+    return rows;
+  },
+  ultimoMesConSaldos(S,m){for(let k=m;k>=1;k--)if(E.saldosMes(S,k).length)return k;return 0;},
+  pendientesTot(S,soc,tipo){return S.pendientes.filter(r=>r.soc===soc&&r.tipo===tipo&&r.estado==="Pendiente").reduce((a,r)=>a+E.pendiente(S,r).ars,0);}
+};
+/*ENGINE-END*/
+
+const SEED={"year":2026,"month":11,"tc":[{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null},{"usd":null,"brl":null}],"plan":[],"units":[],"cuentas":[],"pe":{"bc":{"precio":[null,null,null,null,null,null,null,null,null,null,null,null],"cv":[0,0,0,0,0,0,0,0,0,0,0,0]},"ar":{"precio":[null,null,null,null,null,null,null,null,null,null,null,null],"cv":[0,0,0,0,0,0,0,0,0,0,0,0]}},"esInicial":0,"diario":[],"gastos":[],"saldos":[],"pendientes":[],"pasajeros":[],"pnDiario":[],"cajaBA":[],"cotizaciones":[]};
+
+/* ---------- Utilidades ---------- */
+const $=id=>document.getElementById(id);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>"r"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const nf0=new Intl.NumberFormat("es-AR",{maximumFractionDigits:0});
+const nf2=new Intl.NumberFormat("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const sign=v=>v<0?"−":"";
+const money=v=>sign(v)+"$ "+nf0.format(Math.abs(Math.round(n(v))));
+const usd=v=>sign(v)+"US$ "+nf0.format(Math.abs(Math.round(n(v))));
+const cur=(v,m)=>m==="USD"?usd(v):m==="R$"?sign(v)+"R$ "+nf0.format(Math.abs(Math.round(n(v)))):money(v);
+const num=v=>nf0.format(Math.round(n(v)));
+const pct=(v,d=1)=>Number.isFinite(v)?(v*100).toFixed(d).replace(".",",")+" %":"—";
+const varPct=(a,b)=>(!b||!a)?null:a/Math.abs(b)-Math.sign(b);
+const varTag=(v,inv=false)=>v===null?'<span class="muted">—</span>':`<span class="${(v>=0)!==inv?"up":"down"}">${v>=0?"▲":"▼"} ${pct(Math.abs(v))}</span>`;
+const fd=s=>{const d=parseD(s);return d?`${String(d.d).padStart(2,"0")}/${String(d.m).padStart(2,"0")}/${d.y}`:"—";};
+const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;};
+const socCls=s=>s===SOC_BC?"bc":s===SOC_AR?"ar":"";
+const socShort=s=>s===SOC_BC?"BC":s===SOC_AR?"Arboris":s;
+const pillSoc=s=>`<span class="pill ${socCls(s)}">${esc(socShort(s)||"—")}</span>`;
+const ALIAS={"Caja pesos":"CE$","Caja reales":"CER$","Caja dólares":"CEUSD","Mercado Pago":"MP"};
+const ctaName=c=>ALIAS[c]?`${c} <span class="pill">${ALIAS[c]}</span>`:esc(c);
+const BCP=["#0a2559","#1347a3","#1d5fd0","#3b82f6","#60a5fa","#93c2ff","#c7deff"];
+const ARP=["#0d3a21","#17733f","#1f8f50","#34b26a","#5cc98a","#94dcb0","#c9efd7"];
+const TABLES=["diario","gastos","saldos","pendientes","pnDiario","cajaBA","pasajeros","cotizaciones"];
+
+/* ---------- Estado y memoria de cálculo ---------- */
+let S=null, REV=0;
+function touch(){REV++;scheduleSave();}
+["diario","gasto","saldo","pendiente"].forEach(k=>{const f=E[k];E[k]=(St,r)=>{const t="__"+k;const c=r[t];if(c&&c.rev===REV)return c.v;const v=f(St,r);Object.defineProperty(r,t,{value:{rev:REV,v},enumerable:false,configurable:true,writable:true});return v;};});
+const MEMO={};
+function memo(key,fn){const c=MEMO[key];if(c&&c.rev===REV)return c.v;const v=fn();MEMO[key]={rev:REV,v};return v;}
+const RES=soc=>memo("res"+soc,()=>E.resultado(S,soc));
+const EQ=soc=>memo("eq"+soc,()=>E.equilibrio(S,soc));
+const ES=()=>memo("es",()=>E.entreSociedades(S));
+
+function normalize(s){
+  const d=JSON.parse(JSON.stringify(SEED));
+  const out={...d,...(s||{})};
+  TABLES.forEach(t=>{if(!Array.isArray(out[t]))out[t]=[];out[t].forEach(r=>{if(!r.id)r.id=uid();});});
+  ["tc","plan","units","cuentas"].forEach(k=>{if(!Array.isArray(out[k])||!out[k].length)out[k]=d[k];});
+  while(out.tc.length<12)out.tc.push({usd:null,brl:null});
+  out.pe=out.pe||d.pe;out.year=Number(out.year)||d.year;out.month=Number(out.month)||d.month;
+  return out;
+}
+
+/* ---------- Acceso y guardado (Supabase) ---------- */
+let sb=null,user=null,ROL=null,cloudVersion=null,saveTimer=null;
+const isAdmin=()=>ROL==="admin";
+function setSave(state,txt){$("saveDot").className="dot"+(state==="busy"?" busy":state==="err"?" err":"");$("saveTxt").textContent=txt;}
+function scheduleSave(){setSave("busy","Guardando…");clearTimeout(saveTimer);saveTimer=setTimeout(saveNow,600);}
+async function saveNow(){
+  if(!sb||!user)return;
+  try{
+    const q=sb.from(CONFIG.TABLA).update({data:S,version:(cloudVersion||0)+1,updated_at:new Date().toISOString(),updated_by:user.id}).eq("id",1);
+    const {data,error}=await (cloudVersion===null?q:q.eq("version",cloudVersion)).select("version");
+    if(error)throw error;
+    if(!data||!data.length)throw new Error("Otra persona guardó cambios mientras editabas. Copiá lo que cargaste y recargá la página.");
+    cloudVersion=data[0].version;
+    setSave("ok","Guardado · "+new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}));
+  }catch(e){
+    setSave("err","No se pudo guardar: "+(e.message||e));}
+}
+function showGate(msg,allowLogin=true){
+  document.body.classList.remove("authed");$("gate").classList.remove("hidden");
+  $("gateMsg").textContent=msg||"Esta página es de uso interno de Element Park. Solo pueden ingresar usuarios registrados con su correo y contraseña.";
+  $("gateLoginBtn").classList.toggle("hidden",!allowLogin||!$("loginForm").classList.contains("hidden"));
+  if(!allowLogin)$("loginForm").classList.add("hidden");
+}
+function loadScript(src){return new Promise((ok,ko)=>{const s=document.createElement("script");s.src=src;s.onload=ok;s.onerror=ko;document.head.appendChild(s);});}
+async function boot(){
+  if(!CONFIG.SUPABASE_URL||!CONFIG.SUPABASE_KEY){showGate("Esta página es de uso interno de Element Park. El acceso de usuarios todavía no está configurado.",false);return;}
+  try{await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");}catch(e){}
+  if(!window.supabase){showGate("No se pudo conectar con el servidor de usuarios. Revisá la conexión a internet y recargá.",false);return;}
+  sb=window.supabase.createClient(CONFIG.SUPABASE_URL,CONFIG.SUPABASE_KEY,{auth:{persistSession:true,storage:window.sessionStorage,storageKey:"ep_sesion",autoRefreshToken:true,detectSessionInUrl:true}});
+  sb.auth.onAuthStateChange(ev=>{if(ev==="SIGNED_OUT"&&user){user=null;S=null;location.reload();}});
+  const {data}=await sb.auth.getSession();
+  if(data?.session?.user)return enter(data.session.user);
+  showGate();
+}
+async function enter(u){
+  user=u;
+  // 1) ¿El correo está en la lista de usuarios habilitados? (RLS: solo un habilitado puede leer la lista)
+  const {data:me,error:e1}=await sb.from(CONFIG.USUARIOS).select("email,nombre,rol,activo").eq("email",String(u.email||"").toLowerCase()).maybeSingle();
+  if(e1||!me||me.activo===false){await sb.auth.signOut().catch(()=>{});user=null;
+    showGate(e1&&!/0 rows/i.test(e1.message)?"No se pudo verificar el usuario: "+e1.message:`Usuario no registrado. El correo ${u.email} no está habilitado para acceder a esta página.`);return;}
+  ROL=me.rol;
+  // 2) Datos (también protegidos por RLS)
+  const {data,error}=await sb.from(CONFIG.TABLA).select("data,version").eq("id",1).maybeSingle();
+  if(error){showGate("No se pudieron leer los datos: "+error.message,false);return;}
+  if(!data){
+    if(!isAdmin()){showGate("El sistema todavía no tiene datos cargados. Pedile a la administración que importe la planilla.",false);return;}
+    S=normalize(null);const ins=await sb.from(CONFIG.TABLA).insert({id:1,data:S,version:1,updated_by:u.id});
+    if(ins.error){showGate("No se pudo inicializar la base: "+ins.error.message,false);return;}cloudVersion=1;
+  }else{S=normalize(data.data);cloudVersion=data.version??null;}
+  $("whoami").textContent=(me.nombre||u.email)+(isAdmin()?" · Administración":"");
+  $("gate").classList.add("hidden");document.body.classList.add("authed");
+  start();
+  if(!S.diario.length&&!S.gastos.length&&isAdmin())setTimeout(()=>{if(confirm("La base está vacía. ¿Querés importar ahora la planilla «Cierres Element Park»?"))$("fileXlsx").click();},300);
+}
+$("gateLoginBtn").onclick=()=>{$("loginForm").classList.remove("hidden");$("gateLoginBtn").classList.add("hidden");$("lgEmail").focus();};
+$("loginForm").onsubmit=async e=>{e.preventDefault();if(!sb)return;$("lgStatus").textContent="Verificando…";$("lgStatus").className="status";
+  const {data,error}=await sb.auth.signInWithPassword({email:$("lgEmail").value.trim().toLowerCase(),password:$("lgPass").value});
+  $("lgPass").value="";
+  if(error){$("lgStatus").textContent=/invalid login/i.test(error.message)?"Correo o contraseña incorrectos.":/confirm/i.test(error.message)?"El correo todavía no fue confirmado.":error.message;$("lgStatus").className="status err";return;}
+  $("lgStatus").textContent="";enter(data.user);};
+$("logoutBtn").onclick=async()=>{clearTimeout(saveTimer);if($("saveDot").classList.contains("busy"))await saveNow();user=null;await sb?.auth.signOut();location.reload();};
+/* Solo la administración cambia contraseñas (de cualquier usuario, incluida la propia) */
+const genClave=()=>{const c="ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";const a=new Uint32Array(12);crypto.getRandomValues(a);return [...a].map(x=>c[x%c.length]).join("").replace(/(.{4})(?=.)/g,"$1-");};
+let PW_TARGET="";
+function abrirClave(email){PW_TARGET=email;$("pwTitle").textContent="Nueva contraseña para "+email;const g=genClave();$("pw1").value=g;$("pw2").value=g;$("pwMsg").textContent="";$("pwdDlg").showModal();}
+async function adminFn(body){
+  const {data,error}=await sb.functions.invoke("ep-admin-usuarios",{body});
+  if(error){let m=error.message;try{const j=await error.context.json();m=j.error||m;}catch(_){}
+    if(/Failed to send|not found|404/i.test(m))m="No se encontró la función segura «ep-admin-usuarios» en Supabase. Revisá que esté desplegada.";throw new Error(m);}
+  if(data?.error)throw new Error(data.error);return data;}
+$("pwSave").onclick=async()=>{const a=$("pw1").value,c=$("pw2").value;
+  if(a.length<8){$("pwMsg").textContent="Mínimo 8 caracteres.";$("pwMsg").className="status err";return;}
+  if(a!==c){$("pwMsg").textContent="Las contraseñas no coinciden.";$("pwMsg").className="status err";return;}
+  $("pwMsg").textContent="Guardando…";$("pwMsg").className="status";
+  try{await adminFn({accion:"clave",email:PW_TARGET,password:a});$("pwdDlg").close();alert("Contraseña de "+PW_TARGET+" actualizada.");}
+  catch(e){$("pwMsg").textContent=e.message;$("pwMsg").className="status err";}};
+window.addEventListener("beforeunload",e=>{if(user&&($("saveDot").classList.contains("busy")||$("saveDot").classList.contains("err"))){e.preventDefault();e.returnValue="";}});
+
+/* ---------- Navegación ---------- */
+const PAGES=[["inicio","Inicio","⌂"],["registros","Registros","▤"],["cambio","Cambio","⇄"],["estado","Estado","◔"],["resultados","Resultados","≡"],["pasajeros","Pasajeros","↗"],["config","Configuración","⚙"]];
+let PAGE="inicio";
+const RENDER={};
+function renderTabs(){$("tabs").innerHTML=PAGES.map(([id,l,ic])=>`<button type="button" class="${id===PAGE?"active":""}" data-go="${id}"><span class="ic">${ic}</span>${l}</button>`).join("");
+  $("tabs").querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));}
+function go(id){PAGE=PAGES.some(p=>p[0]===id)?id:"inicio";if(location.hash!=="#"+PAGE)history.replaceState(null,"","#"+PAGE);
+  document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));$("pg-"+PAGE).classList.remove("hidden");renderTabs();render();window.scrollTo({top:0});}
+function render(){try{RENDER[PAGE]();}catch(e){console.error(e);$("pg-"+PAGE).innerHTML=`<div class="card"><h3>Ocurrió un error al dibujar esta página</h3><p class="sub">${esc(e.message)}</p></div>`;}}
+function start(){
+  $("gMonth").innerHTML=MESES.map((m,i)=>`<option value="${i+1}">${m}</option>`).join("");
+  $("gMonth").value=S.month;$("gYear").textContent=S.year;
+  $("gMonth").onchange=()=>{S.month=Number($("gMonth").value);touch();render();};
+  setSave("ok","Conectado · datos compartidos");
+  go((location.hash||"#inicio").slice(1));
+}
+window.addEventListener("hashchange",()=>{if(!S)return;const h=location.hash.slice(1);if(h&&h!==PAGE)go(h);});
+
+/* ---------- Gráficos ---------- */
+const CH={};
+function chart(id,cfg){
+  const el=$(id);if(!el)return;
+  if(!window.Chart){el.parentElement.innerHTML='<div class="empty">No se pudo cargar la librería de gráficos (revisá la conexión a internet).</div>';return;}
+  CH[id]?.destroy();
+  Chart.defaults.font.family=getComputedStyle(document.body).fontFamily;Chart.defaults.color="#475569";
+  cfg.options=Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{boxWidth:12,usePointStyle:true}}}},cfg.options||{});
+  CH[id]=new Chart(el,cfg);
+}
+const axisMoney={ticks:{callback:v=>Math.abs(v)>=1e6?(v/1e6).toLocaleString("es-AR",{maximumFractionDigits:1})+" M":nf0.format(v)},grid:{color:"#eef1f6"}};
+const ttMoney={callbacks:{label:c=>`${c.dataset.label||c.label}: ${money(c.parsed.y??c.parsed)}`}};
+
+/* ---------- Helpers de datos ---------- */
+const MON=()=>S.month, YR=()=>S.year;
+const inPeriod=(c,per)=>c.anio===YR()&&(per==="anio"?c.mes<=MON():c.mes===MON());
+function saldoCuenta(soc,cta,m){const r=S.saldos.filter(x=>x.soc===soc&&x.cuenta===cta).find(x=>{const c=E.saldo(S,x);return c.mes===m&&c.anio===YR();});return r?{saldo:n(r.saldo),...E.saldo(S,r)}:null;}
+
+/* =====================================================================
+   PÁGINA: INICIO
+   ===================================================================== */
+let pnSoloDatos=true;
+RENDER.inicio=function(){
+  const m=MON(),y=YR(),bc=RES(SOC_BC),ar=RES(SOC_AR),i=m-1;
+  const mSal=E.ultimoMesConSaldos(S,m);
+  const cajas=soc=>S.cuentas.filter(c=>c.soc===soc).map(c=>({...c,s:saldoCuenta(soc,c.cuenta,mSal)}));
+  const cBC=cajas(SOC_BC),cAR=cajas(SOC_AR);
+  const totU=l=>l.reduce((a,c)=>a+(c.s?c.s.usd:0),0);
+  const resTot=bc.res[i]+ar.res[i];
+  const cajaCard=(soc,list,cls)=>{const tot=totU(list);const pal=cls==="bc"?BCP:ARP;
+    return `<div class="card ${cls}"><div class="split"><h3>Saldos de cajas · ${soc}</h3><span class="tag ${cls}">${mSal?"Cierre "+MESES[mSal-1]:"Sin saldos"}</span></div>
+    <p class="sub">${mSal&&mSal!==m?`No hay saldos cargados para ${MESES[m-1]}: se muestra el último cierre disponible.`:"Saldo de cada cuenta al último día del mes, con su equivalente en dólares (TC promedio del mes)."}</p>
+    <div class="bar" style="margin-bottom:10px">${list.map((c,k)=>c.s&&c.s.usd>0?`<i title="${esc(c.cuenta)}" style="width:${(c.s.usd/tot*100).toFixed(2)}%;background:${pal[k%pal.length]}"></i>`:"").join("")}</div>
+    <div class="list">${list.map((c,k)=>`<div class="it"><span class="k"><span class="legend-dot" style="background:${pal[k%pal.length]}"></span>${ctaName(c.cuenta)}</span><span class="v">${c.s?cur(c.s.saldo,c.moneda):'<span class="muted">sin dato</span>'}${c.s&&c.moneda!=="USD"?`<small>${usd(c.s.usd)}</small>`:""}</span></div>`).join("")}
+    <div class="it" style="border-top:2px solid var(--line);margin-top:4px"><span class="k"><b>Total ${socShort(soc)}</b></span><span class="v" style="font-size:16px">${usd(tot)}</span></div></div></div>`;};
+  const pendList=S.pendientes.filter(p=>p.estado==="Pendiente").sort((a,b)=>String(a.vto).localeCompare(String(b.vto)));
+  const hoy=todayISO();
+  const pend=soc=>({cob:E.pendientesTot(S,soc,"A cobrar"),pag:E.pendientesTot(S,soc,"A pagar")});
+  const pB=pend(SOC_BC),pA=pend(SOC_AR);
+  const paxBox=(u,soc,cls)=>{const a=E.pasajerosMes(S,u,y,m),b=E.pasajerosMes(S,u,y-1,m);
+    let acc=0,accP=0;for(let k=1;k<=m;k++){acc+=E.pasajerosMes(S,u,y,k);accP+=E.pasajerosMes(S,u,y-1,k);}
+    const pn=E.pasajerosMes(S,"PN Iguazú",y,m);
+    return `<div class="kpi ${cls}"><div class="l"><span>Pasajeros ${u}</span>${pillSoc(soc)}</div><div class="v">${num(a)}</div>
+      <div class="d">vs ${MES3[m-1]} ${y-1}: ${num(b)} ${varTag(varPct(a,b))}</div>
+      <div class="d">Acumulado ene–${MES3[m-1]}: <b>${num(acc)}</b> ${varTag(varPct(acc,accP))}</div>
+      <div class="d">Captación PN Iguazú: <b>${pn?pct(a/pn):"sin dato PN"}</b></div></div>`;};
+  const fotos=E.diarioSum(S,"Fotografía",m,"fotos"),fImp=E.diarioSum(S,"Fotografía",m,"fotosImp"),fDig=E.diarioSum(S,"Fotografía",m,"fotosDig");
+  const fotosAnt=m>1?E.diarioSum(S,"Fotografía",m-1,"fotos"):0;const paxIce=E.pasajerosMes(S,"Icebar",y,m);
+  const eqB=EQ(SOC_BC),eqA=EQ(SOC_AR);
+  const peBar=(lab,cls,pax,pe)=>{const r=pe?pax/pe:0;return `<div style="margin:10px 0"><div class="split"><span>${lab}</span><span class="${r>=1?"up":"down"}"><b>${num(pax)}</b> / ${num(pe)} pax ${r>=1?"✓":"✗"}</span></div><div class="bar" style="height:10px;margin-top:5px"><i style="width:${Math.min(100,r*100).toFixed(1)}%;background:var(--${cls}-500)"></i></div></div>`;};
+  const row=(lab,a,kind)=>{const v=k=>a[k];return `<tr class="${kind||""}"><td>${lab}</td>${[bc,ar].map((R,ix)=>{const arr=R[a];const acc=arr.slice(0,m).reduce((s,x)=>s+x,0);const fn=a==="usd"?usd:money;return `<td class="n">${fn(arr[i])}</td><td class="n muted">${m>1?fn(arr[i-1]):"—"}</td><td class="n">${fn(acc)}</td>`;}).join("")}</tr>`;};
+  $("pg-inicio").innerHTML=`
+  <div class="page-head"><div><h2>Inicio · ${MESES[m-1]} ${y}</h2><p>Foto del cierre: saldos de cajas, cuentas pendientes, cómo viene el mes, pasajeros, fotos y la captación sobre los visitantes del Parque Nacional Iguazú.</p></div>
+    <div class="toolbar"><button class="btn ghost" onclick="go('registros')">▤ Cargar registros</button><button class="btn ghost" onclick="window.print()">Imprimir</button></div></div>
+  <div class="grid g4">
+    <div class="kpi bc"><div class="l"><span>Ingresos del mes</span>${pillSoc(SOC_BC)}</div><div class="v">${money(bc.totIng[i])}</div><div class="d">vs mes anterior ${varTag(m>1?varPct(bc.totIng[i],bc.totIng[i-1]):null)}</div></div>
+    <div class="kpi ar"><div class="l"><span>Ingresos del mes</span>${pillSoc(SOC_AR)}</div><div class="v">${money(ar.totIng[i])}</div><div class="d">vs mes anterior ${varTag(m>1?varPct(ar.totIng[i],ar.totIng[i-1]):null)}</div></div>
+    <div class="kpi dark"><div class="l"><span>Resultado del mes · Element Park</span></div><div class="v">${money(resTot)}</div><div class="d">BC ${money(bc.res[i])} · Arboris ${money(ar.res[i])}</div></div>
+    <div class="kpi dark"><div class="l"><span>Total en cajas (USD)</span></div><div class="v">${usd(totU(cBC)+totU(cAR))}</div><div class="d">${mSal?"Cierre de "+MESES[mSal-1]:"Sin saldos cargados"}</div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">${cajaCard(SOC_BC,cBC,"bc")}${cajaCard(SOC_AR,cAR,"ar")}</div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card mix span2"><h3>Cómo viene el mes</h3><p class="sub">Ingresos del Diario menos gastos imputados a cada sociedad (según el plan de cuentas). Las inversiones no son gasto: se restan aparte para llegar al saldo.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th class="n" style="color:var(--bc-700)">BC · ${MES3[i]}</th><th class="n">Mes ant.</th><th class="n">Acum. año</th><th class="n" style="color:var(--ar-700)">Arboris · ${MES3[i]}</th><th class="n">Mes ant.</th><th class="n">Acum. año</th></tr></thead><tbody>
+      ${row("Ingresos","totIng")}${row("Gastos","totG")}${row("Resultado","res","res")}${row("Inversiones y mejoras","inv")}${row("Saldo en USD","usd","tot")}
+      </tbody></table></div>
+      <div class="chart-box sm" style="margin-top:14px"><canvas id="chMes"></canvas></div></div>
+    <div class="card"><h3>Cuentas a cobrar y a pagar</h3><p class="sub">Solo las que están en estado «Pendiente» (en $).</p>
+      <div class="grid g2" style="gap:10px">
+        <div class="kpi bc"><div class="l">BC · Neto</div><div class="v" style="font-size:18px" >${money(pB.cob-pB.pag)}</div><div class="d">Cobrar ${money(pB.cob)}<br>Pagar ${money(pB.pag)}</div></div>
+        <div class="kpi ar"><div class="l">Arboris · Neto</div><div class="v" style="font-size:18px">${money(pA.cob-pA.pag)}</div><div class="d">Cobrar ${money(pA.cob)}<br>Pagar ${money(pA.pag)}</div></div>
+      </div>
+      <div class="list" style="margin-top:10px;max-height:240px;overflow:auto">${pendList.length?pendList.map(p=>`<div class="it"><span class="k" style="flex-direction:column;align-items:flex-start;gap:2px"><span>${pillSoc(p.soc)} <span class="pill ${p.tipo==="A cobrar"?"ok":"warn"}">${esc(p.tipo)}</span> ${p.vto&&p.vto<hoy?'<span class="pill bad">Vencido</span>':""}</span><span>${esc(p.contraparte||"")} <small class="muted">${esc(p.detalle||"")}</small></span></span><span class="v">${cur(p.monto,p.moneda)}<small>vto ${fd(p.vto)}</small></span></div>`).join(""):'<div class="empty">No hay cuentas pendientes.</div>'}</div>
+      <div class="toolbar" style="margin-top:8px"><button class="btn ghost sm" onclick="openReg('pendientes')">Ver / cargar pendientes</button></div></div>
+  </div>
+  <div class="grid g4" style="margin-top:16px">
+    ${paxBox("Icebar",SOC_BC,"bc")}${paxBox("Fly Park",SOC_AR,"ar")}
+    <div class="kpi bc"><div class="l"><span>Fotos vendidas</span>${pillSoc(SOC_BC)}</div><div class="v">${num(fotos)}</div>
+      <div class="d">vs mes anterior ${varTag(m>1?varPct(fotos,fotosAnt):null)}</div>
+      <div class="d">Impresas ${fotos?pct(fImp/fotos,0):"—"} · Digitales ${fotos?pct(fDig/fotos,0):"—"}</div>
+      <div class="d">Fotos sobre pasajeros Icebar: <b>${paxIce?pct(fotos/paxIce):"—"}</b></div></div>
+    <div class="kpi"><div class="l"><span>Punto de equilibrio del mes</span></div>
+      ${peBar("Icebar (BC)","bc",eqB.pax[i],eqB.pePax[i])}${peBar("Fly Park (Arboris)","ar",eqA.pax[i],eqA.pePax[i])}
+      <div class="d">Pax necesarios = costos fijos ÷ (precio − costo variable)</div></div>
+  </div>
+  <div class="card mix" style="margin-top:16px" id="pnCard"></div>`;
+  chart("chMes",{type:"bar",data:{labels:MES3.slice(0,Math.max(m,1)),datasets:[
+    {label:"Ingresos BC",data:bc.totIng.slice(0,m),backgroundColor:BCP[2],stack:"bc"},
+    {label:"Gastos BC",data:bc.totG.slice(0,m).map(v=>-v),backgroundColor:BCP[5],stack:"bc"},
+    {label:"Ingresos Arboris",data:ar.totIng.slice(0,m),backgroundColor:ARP[2],stack:"ar"},
+    {label:"Gastos Arboris",data:ar.totG.slice(0,m).map(v=>-v),backgroundColor:ARP[5],stack:"ar"}]},
+    options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(Math.abs(c.parsed.y))}`}},legend:{position:"bottom",labels:{boxWidth:10}}}}});
+  renderPN();
+};
+function renderPN(){
+  const m=MON(),y=YR(),days=new Date(y,m,0).getDate();
+  const pnM=E.pasajerosMes(S,"PN Iguazú",y,m),bcM=E.pasajerosMes(S,"Icebar",y,m),fpM=E.pasajerosMes(S,"Fly Park",y,m);
+  const hist=(S.pasajeros.find(p=>p.unidad==="PN Iguazú"&&p.anio===y)||{m:[]}).m[m-1];
+  const rows=[];let sumPN=0,sumBC=0,sumFP=0;
+  for(let d=1;d<=days;d++){
+    const iso=`${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const rec=S.pnDiario.find(r=>r.fecha===iso);const pn=rec?n(rec.pax):0;
+    const bc=S.diario.filter(r=>r.fecha===iso&&r.unidad==="Icebar").reduce((a,r)=>a+E.diario(S,r).tickets,0);
+    const fp=S.diario.filter(r=>r.fecha===iso&&r.unidad==="Fly Park").reduce((a,r)=>a+E.diario(S,r).tickets,0);
+    sumPN+=pn;sumBC+=bc;sumFP+=fp;
+    if(pnSoloDatos&&!pn&&!bc&&!fp)continue;
+    const dow=new Date(y,m-1,d).toLocaleDateString("es-AR",{weekday:"short"});
+    rows.push(`<tr><td>${dow} ${d}</td><td class="n"><input class="cell" type="number" min="0" step="1" data-pn="${iso}" value="${pn||""}" placeholder="cargar"></td>
+      <td class="n">${num(bc)}</td><td class="n" style="color:var(--bc-700);font-weight:650">${pn?pct(bc/pn):"—"}</td>
+      <td class="n">${num(fp)}</td><td class="n" style="color:var(--ar-700);font-weight:650">${pn?pct(fp/pn):"—"}</td>
+      <td style="min-width:140px">${pn?`<div class="bar"><i style="width:${Math.min(100,bc/pn*100)}%;background:var(--bc-500)"></i><i style="width:${Math.min(100,fp/pn*100)}%;background:var(--ar-500)"></i></div>`:""}</td></tr>`);
+  }
+  $("pnCard").innerHTML=`<div class="split"><div><h3>Parque Nacional Iguazú · visitantes por día</h3><p class="sub" style="margin:0">Cargá cuántas personas visitaron el PN cada día. El sistema calcula qué porcentaje entró a <b style="color:var(--bc-700)">Bajo Cero (Icebar)</b> y a <b style="color:var(--ar-700)">Fly Park (Arboris)</b>.</p></div>
+    <label class="toolbar" style="font-size:12.5px"><input type="checkbox" id="pnOnly" ${pnSoloDatos?"checked":""}> Mostrar solo días con datos</label></div>
+  <div class="grid g4" style="margin:14px 0">
+    <div class="kpi dark"><div class="l">Visitantes PN · ${MESES[m-1]}</div><div class="v">${num(pnM)}</div><div class="d">${typeof hist==="number"?"Dato mensual cargado en Pasajeros":"Suma de los días cargados"}${typeof hist==="number"&&sumPN?` · días: ${num(sumPN)}`:""}</div></div>
+    <div class="kpi bc"><div class="l">Fueron a BC (Icebar)</div><div class="v">${num(bcM)}</div><div class="d">Captación: <b>${pnM?pct(bcM/pnM,2):"sin dato PN"}</b></div></div>
+    <div class="kpi ar"><div class="l">Fueron a FP (Fly Park)</div><div class="v">${num(fpM)}</div><div class="d">Captación: <b>${pnM?pct(fpM/pnM,2):"sin dato PN"}</b></div></div>
+    <div class="kpi"><div class="l">Reparto entre BC y FP</div><div class="v" style="font-size:18px"><span style="color:var(--bc-700)">${bcM+fpM?pct(bcM/(bcM+fpM),0):"—"}</span> / <span style="color:var(--ar-700)">${bcM+fpM?pct(fpM/(bcM+fpM),0):"—"}</span></div>
+      <div class="bar" style="height:10px;margin-top:8px"><i style="width:${bcM+fpM?bcM/(bcM+fpM)*100:0}%;background:var(--bc-500)"></i><i style="width:${bcM+fpM?fpM/(bcM+fpM)*100:0}%;background:var(--ar-500)"></i></div><div class="d">Sobre el total que fue a alguno de los dos</div></div>
+  </div>
+  <div class="tbl-wrap" style="max-height:420px"><table class="tbl"><thead><tr><th>Día</th><th class="n">Visitantes PN</th><th class="n">Icebar (BC)</th><th class="n">% BC</th><th class="n">Fly Park (FP)</th><th class="n">% FP</th><th>Proporción</th></tr></thead>
+  <tbody>${rows.join("")||`<tr><td colspan="7" class="empty">Sin datos diarios en ${MESES[m-1]}. Destildá «solo días con datos» para cargar cada día.</td></tr>`}</tbody>
+  <tfoot><tr class="tot"><td>Total días</td><td class="n">${num(sumPN)}</td><td class="n">${num(sumBC)}</td><td class="n">${sumPN?pct(sumBC/sumPN):"—"}</td><td class="n">${num(sumFP)}</td><td class="n">${sumPN?pct(sumFP/sumPN):"—"}</td><td></td></tr></tfoot></table></div>
+  <p class="note" style="margin-top:10px">Los pasajeros por día de BC y FP salen del <b>Diario de ventas</b> (tickets vendidos de esa fecha). Los meses que se cargaron como cierre mensual aparecen en el último día del mes.</p>`;
+  $("pnOnly").onchange=e=>{pnSoloDatos=e.target.checked;renderPN();};
+  $("pnCard").querySelectorAll("[data-pn]").forEach(inp=>inp.onchange=()=>{
+    const iso=inp.dataset.pn,v=inp.value===""?null:Math.max(0,Math.round(n(inp.value)));
+    const ix=S.pnDiario.findIndex(r=>r.fecha===iso);
+    if(v===null||v===0){if(ix>=0)S.pnDiario.splice(ix,1);}else if(ix>=0)S.pnDiario[ix].pax=v;else S.pnDiario.push({id:uid(),fecha:iso,pax:v});
+    touch();renderPN();});
+}
+
+/* =====================================================================
+   PÁGINA: REGISTROS (base de datos editable — equivalente a las solapas de carga del Excel)
+   ===================================================================== */
+const unitsOpt=()=>S.units.map(u=>u.unidad);
+const socOpt=()=>[SOC_BC,SOC_AR];
+const imputOpt=()=>[...new Set(S.plan.map(p=>p.imput))];
+const REG={
+  diario:{label:"Diario de ventas",icon:"🎟",desc:"Una fila por día y por unidad. Fotografía y Monki Bar dejan vacías las columnas de entradas.",feeds:"Inicio (ingresos, pasajeros, fotos) · Resultados (ingresos por unidad) · Estado (medios de cobro) · Pasajeros (meses sin cierre) · PN Iguazú (pax por día)",
+    soc:r=>E.diario(S,r).soc,mes:r=>E.diario(S,r),date:"fecha",
+    fields:[{g:"Datos",k:"fecha",l:"Fecha",t:"date",req:1},{g:"Datos",k:"unidad",l:"Unidad",t:"select",o:unitsOpt,req:1,h:"La sociedad se completa sola según la unidad."},{g:"Datos",k:"detalle",l:"Detalle",t:"text",wide:1},
+      ...[["may","Mayores"],["men","Menores"],["agMay","Agencia mayores"],["agMen","Agencia menores"],["te2040","Tarifa esp. 20-40"],["te41","Tarifa esp. +41"],["atMay","Atractivo mayores"],["atMen","Atractivo menores"],["voucher","Voucher"]].map(([k,l])=>({g:"Entradas (suman el total de tickets)",k,l,t:"num"})),
+      ...[["menFree","Menores free"],["liberados","Liberados"],["web","Tickets web (cant.)"],["fotosImp","Fotos impresas"],["fotosDig","Fotos digitales"],["comensales","Comensales"]].map(([k,l])=>({g:"Otros contadores",k,l,t:"num"})),
+      ...[["efe","Efectivo $"],["efeR","Efectivo R$"],["efeUSD","Efectivo USD"],["tarjeta","Tarjeta $"],["pweb","Página web $"],["difCaja","Dif. de caja $"]].map(([k,l])=>({g:"Cobranzas",k,l,t:"num"}))],
+    calc:r=>{const c=E.diario(S,r);return [["Sociedad",socShort(c.soc)],["Total tickets",num(c.tickets)],["Total ingresos $",money(c.ingresos)],["Mes",MESES[c.mes-1]||"—"]];},
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Unidad",v:r=>esc(r.unidad)},{l:"Sociedad",c:1,v:r=>pillSoc(E.diario(S,r).soc)},{l:"Detalle",v:r=>`<span class="muted">${esc(r.detalle||"")}</span>`},
+      {l:"Tickets",c:1,n:1,v:r=>num(E.diario(S,r).tickets)},{l:"Fotos",c:1,n:1,v:r=>num(E.diario(S,r).fotos)},{l:"Comensales",n:1,v:r=>r.comensales?num(r.comensales):""},
+      {l:"Efectivo $",n:1,v:r=>r.efe?money(r.efe):""},{l:"Efect. R$",n:1,v:r=>r.efeR?cur(r.efeR,"R$"):""},{l:"Efect. USD",n:1,v:r=>r.efeUSD?usd(r.efeUSD):""},{l:"Tarjeta",n:1,v:r=>r.tarjeta?money(r.tarjeta):""},{l:"Web",n:1,v:r=>r.pweb?money(r.pweb):""},
+      {l:"Total ingresos $",c:1,n:1,v:r=>`<b>${money(E.diario(S,r).ingresos)}</b>`}]},
+  gastos:{label:"Gastos",icon:"🧾",desc:"Una fila por pago (bancario o en efectivo). El reparto entre sociedades sale solo del Plan de cuentas; «% BC manual» sirve solo para excepciones.",feeds:"Resultados (gastos e inversiones) · Entre sociedades · Estado (egresos por cuenta) · Inicio (cómo viene el mes)",
+    soc:r=>r.paga,mes:r=>E.gasto(S,r),date:"fecha",
+    fields:[{g:"Pago",k:"fecha",l:"Fecha",t:"date",req:1},{g:"Pago",k:"pedido",l:"Nº de pedido (WhatsApp)",t:"text",h:"Si falta, el control lo marca."},{g:"Pago",k:"paga",l:"Paga",t:"select",o:socOpt,req:1},{g:"Pago",k:"cuenta",l:"Cuenta / caja",t:"select",o:f=>[""].concat(S.cuentas.filter(c=>c.soc===f.paga).map(c=>c.cuenta)),dep:"paga"},
+      {g:"Imputación",k:"imput",l:"Imputación",t:"select",o:imputOpt,req:1},{g:"Imputación",k:"tipo",l:"Tipo",t:"select",o:f=>S.plan.filter(p=>p.imput===f.imput).map(p=>p.tipo),dep:"imput",req:1},{g:"Imputación",k:"detalle",l:"Proveedor / detalle",t:"text",wide:1},
+      {g:"Importe",k:"moneda",l:"Moneda",t:"select",o:()=>["$","USD","R$"],req:1},{g:"Importe",k:"monto",l:"Monto",t:"num",req:1},{g:"Importe",k:"pctManual",l:"% Bajo Cero manual (opcional)",t:"pct",h:"Vacío = usa el plan de cuentas."}],
+    calc:r=>{const c=E.gasto(S,r);return [["Monto en $",money(c.ars)],["% Bajo Cero aplicado",c.pct===null?"—":pct(c.pct,0)+" ("+c.regla+")"],["Importe BC",money(c.bc)],["Importe Arboris",money(c.ar)],["Control",c.control]];},
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Pedido",v:r=>esc(r.pedido||"")},{l:"Paga",v:r=>pillSoc(r.paga)},{l:"Cuenta",v:r=>r.cuenta?ctaName(r.cuenta):'<span class="muted">—</span>'},{l:"Imputación",v:r=>esc(r.imput)},{l:"Tipo",v:r=>esc(r.tipo)},{l:"Detalle",v:r=>`<span class="muted">${esc(r.detalle||"")}</span>`},
+      {l:"Monto",n:1,v:r=>cur(r.monto,r.moneda)},{l:"Monto $",c:1,n:1,v:r=>money(E.gasto(S,r).ars)},{l:"% BC",c:1,n:1,v:r=>{const c=E.gasto(S,r);return c.pct===null?"—":pct(c.pct,0);}},
+      {l:"Importe BC",c:1,n:1,v:r=>`<span style="color:var(--bc-700)">${money(E.gasto(S,r).bc)}</span>`},{l:"Importe Arboris",c:1,n:1,v:r=>`<span style="color:var(--ar-700)">${money(E.gasto(S,r).ar)}</span>`},
+      {l:"Control",c:1,v:r=>{const c=E.gasto(S,r).control;return `<span class="pill ${c==="OK"?"ok":c.startsWith("⚠")?"bad":"warn"}">${esc(c)}</span>`;}}]},
+  saldos:{label:"Saldos al cierre",icon:"🏦",desc:"Una fila por cuenta, el último día de cada mes. La moneda sale de «Cuentas y cajas» en Configuración.",feeds:"Inicio (saldos de cajas) · Estado (análisis por cuenta)",
+    soc:r=>r.soc,mes:r=>E.saldo(S,r),date:"fecha",
+    fields:[{k:"fecha",l:"Fecha de cierre",t:"date",req:1},{k:"soc",l:"Sociedad",t:"select",o:socOpt,req:1},{k:"cuenta",l:"Cuenta / caja",t:"select",o:f=>S.cuentas.filter(c=>c.soc===f.soc).map(c=>c.cuenta),dep:"soc",req:1},{k:"saldo",l:"Saldo (en la moneda de la cuenta)",t:"num",req:1}],
+    calc:r=>{const c=E.saldo(S,r);return [["Moneda",c.moneda],["Saldo en USD",usd(c.usd)],["Mes",MESES[c.mes-1]||"—"]];},
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Sociedad",v:r=>pillSoc(r.soc)},{l:"Cuenta / caja",v:r=>ctaName(r.cuenta)},{l:"Moneda",c:1,v:r=>E.saldo(S,r).moneda},{l:"Saldo",n:1,v:r=>cur(r.saldo,E.saldo(S,r).moneda)},{l:"Saldo en USD",c:1,n:1,v:r=>usd(E.saldo(S,r).usd)}]},
+  pendientes:{label:"Cuentas a pagar y cobrar",icon:"⏳",desc:"Al cancelar, cambiá el Estado a «Cancelado» (no borres la fila).",feeds:"Inicio (cuentas a cobrar y pagar)",
+    soc:r=>r.soc,mes:r=>({mes:E.pendiente(S,r).mes,anio:(parseD(r.vto)||{y:YR()}).y}),date:"vto",
+    fields:[{k:"tipo",l:"Tipo",t:"select",o:()=>["A pagar","A cobrar"],req:1},{k:"soc",l:"Sociedad",t:"select",o:socOpt,req:1},{k:"vto",l:"Fecha de vencimiento",t:"date"},{k:"contraparte",l:"Contraparte",t:"text",req:1},{k:"detalle",l:"Detalle",t:"text",wide:1},
+      {k:"cat",l:"Categoría",t:"select",o:()=>["Proveedores","Impuestos","Servicios","Sueldos","Agencias","Entre sociedades / socios"]},{k:"moneda",l:"Moneda",t:"select",o:()=>["$","USD","R$"],req:1},{k:"monto",l:"Monto",t:"num",req:1},{k:"estado",l:"Estado",t:"select",o:()=>["Pendiente","Cancelado"],req:1},{k:"fcanc",l:"Fecha de cancelación",t:"date"}],
+    calc:r=>[["Monto en $",money(E.pendiente(S,r).ars)]],
+    cols:[{l:"Tipo",v:r=>`<span class="pill ${r.tipo==="A cobrar"?"ok":"warn"}">${esc(r.tipo)}</span>`},{l:"Sociedad",v:r=>pillSoc(r.soc)},{l:"Vencimiento",v:r=>fd(r.vto)+(r.estado==="Pendiente"&&r.vto&&r.vto<todayISO()?' <span class="pill bad">Vencido</span>':"")},{l:"Contraparte",v:r=>esc(r.contraparte)},{l:"Detalle",v:r=>`<span class="muted">${esc(r.detalle||"")}</span>`},{l:"Categoría",v:r=>esc(r.cat||"")},
+      {l:"Monto",n:1,v:r=>cur(r.monto,r.moneda)},{l:"Monto $",c:1,n:1,v:r=>money(E.pendiente(S,r).ars)},{l:"Estado",v:r=>`<span class="pill ${r.estado==="Pendiente"?"warn":""}">${esc(r.estado)}</span>`},{l:"Cancelación",v:r=>fd(r.fcanc)}]},
+  pnDiario:{label:"PN Iguazú (diario)",icon:"🌿",desc:"Visitantes del Parque Nacional Iguazú por día. También se cargan directo desde el recuadro de Inicio.",feeds:"Inicio (captación diaria BC / FP) · Pasajeros (PN mensual cuando no hay dato mensual)",
+    soc:()=>"",mes:r=>{const d=parseD(r.fecha)||{};return {mes:d.m,anio:d.y};},date:"fecha",
+    fields:[{k:"fecha",l:"Fecha",t:"date",req:1},{k:"pax",l:"Visitantes del PN",t:"num",req:1},{k:"nota",l:"Nota",t:"text",wide:1}],
+    calc:r=>{const bc=S.diario.filter(x=>x.fecha===r.fecha&&x.unidad==="Icebar").reduce((a,x)=>a+E.diario(S,x).tickets,0),fp=S.diario.filter(x=>x.fecha===r.fecha&&x.unidad==="Fly Park").reduce((a,x)=>a+E.diario(S,x).tickets,0);return [["Icebar (BC)",num(bc)],["% BC",n(r.pax)?pct(bc/n(r.pax)):"—"],["Fly Park (FP)",num(fp)],["% FP",n(r.pax)?pct(fp/n(r.pax)):"—"]];},
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Visitantes PN",n:1,v:r=>num(r.pax)},{l:"Icebar (BC)",c:1,n:1,v:r=>REG.pnDiario.calc(r)[0][1]},{l:"% BC",c:1,n:1,v:r=>REG.pnDiario.calc(r)[1][1]},{l:"Fly Park (FP)",c:1,n:1,v:r=>REG.pnDiario.calc(r)[2][1]},{l:"% FP",c:1,n:1,v:r=>REG.pnDiario.calc(r)[3][1]},{l:"Nota",v:r=>esc(r.nota||"")}]},
+  cajaBA:{label:"Caja Buenos Aires (IVA)",icon:"🏙",desc:"Comprobantes de la Caja Buenos Aires: IVA compras e IVA ventas (y otros ingresos/egresos). El IVA se calcula con la alícuota.",feeds:"Estado → análisis por cuenta «Caja Buenos Aires»",
+    soc:r=>r.soc,mes:r=>{const d=parseD(r.fecha)||{};return {mes:d.m,anio:d.y};},date:"fecha",
+    fields:[{k:"fecha",l:"Fecha",t:"date",req:1},{k:"soc",l:"Sociedad",t:"select",o:socOpt,req:1},{k:"tipo",l:"Tipo",t:"select",o:()=>["IVA compras","IVA ventas","Ingreso","Egreso"],req:1},{k:"comprobante",l:"Comprobante",t:"text"},{k:"contraparte",l:"Proveedor / cliente",t:"text"},
+      {k:"moneda",l:"Moneda",t:"select",o:()=>["$","USD","R$"],req:1},{k:"neto",l:"Importe neto",t:"num",req:1},{k:"alic",l:"Alícuota IVA %",t:"select",o:()=>["21","10.5","27","0"]},{k:"detalle",l:"Detalle",t:"text",wide:1}],
+    calc:r=>{const c=calcBA(r);return [["IVA",cur(c.iva,r.moneda)],["Total",cur(c.total,r.moneda)],["Total en $",money(c.ars)]];},
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Sociedad",v:r=>pillSoc(r.soc)},{l:"Tipo",v:r=>`<span class="pill ${/ventas|Ingreso/.test(r.tipo)?"ok":"warn"}">${esc(r.tipo)}</span>`},{l:"Comprobante",v:r=>esc(r.comprobante||"")},{l:"Proveedor / cliente",v:r=>esc(r.contraparte||"")},
+      {l:"Neto",n:1,v:r=>cur(r.neto,r.moneda)},{l:"Alíc.",n:1,v:r=>(r.alic??"0")+" %"},{l:"IVA",c:1,n:1,v:r=>cur(calcBA(r).iva,r.moneda)},{l:"Total",c:1,n:1,v:r=>cur(calcBA(r).total,r.moneda)},{l:"Total $",c:1,n:1,v:r=>money(calcBA(r).ars)}]},
+  pasajeros:{label:"Pasajeros (histórico)",icon:"👥",desc:"Historia mensual por unidad y año. Los meses vacíos del año en curso se completan solos desde el Diario (y el PN desde la carga diaria).",feeds:"Pasajeros · Inicio (comparación con año anterior) · Punto de equilibrio",
+    soc:r=>r.unidad==="Icebar"?SOC_BC:r.unidad==="Fly Park"?SOC_AR:"",mes:()=>({mes:0,anio:0}),date:null,
+    fields:[{k:"unidad",l:"Unidad",t:"select",o:()=>["Icebar","Fly Park","PN Iguazú"],req:1},{k:"anio",l:"Año",t:"num",req:1},...MESES.map((mm,i)=>({g:"Pasajeros por mes (vacío = automático)",k:"m."+i,l:mm,t:"num"}))],
+    calc:r=>[["Total del año",num((r.m||[]).reduce((a,v)=>a+n(v),0))]],
+    cols:[{l:"Unidad",v:r=>esc(r.unidad)},{l:"Año",v:r=>r.anio},...MES3.map((mm,i)=>({l:mm,n:1,v:r=>typeof r.m?.[i]==="number"?num(r.m[i]):`<span class="muted">${(()=>{const a=E.pasajerosMes(S,r.unidad,r.anio,i+1);return a?num(a)+"ᵃ":"·";})()}</span>`})),{l:"Total",c:1,n:1,v:r=>`<b>${num(MESES.reduce((a,_,i)=>a+E.pasajerosMes(S,r.unidad,r.anio,i+1),0))}</b>`}]},
+  cotizaciones:{label:"Cotizaciones",icon:"💱",desc:"Historial de cotizaciones diarias (se guardan desde la página Cambio).",feeds:"Cambio (promedios registrados por mes)",
+    soc:()=>"",mes:r=>{const d=parseD(r.fecha)||{};return {mes:d.m,anio:d.y};},date:"fecha",
+    fields:[{k:"fecha",l:"Fecha",t:"date",req:1},{k:"oficialC",l:"Oficial compra",t:"num"},{k:"oficialV",l:"Oficial venta",t:"num"},{k:"blueC",l:"Blue compra",t:"num"},{k:"blueV",l:"Blue venta",t:"num"},{k:"brlC",l:"Real compra",t:"num"},{k:"brlV",l:"Real venta",t:"num"},{k:"fuente",l:"Fuente",t:"text"}],
+    calc:r=>[["Brecha blue/oficial",n(r.oficialV)?pct(n(r.blueV)/n(r.oficialV)-1):"—"]],
+    cols:[{l:"Fecha",v:r=>fd(r.fecha)},{l:"Oficial C",n:1,v:r=>nf2.format(n(r.oficialC))},{l:"Oficial V",n:1,v:r=>nf2.format(n(r.oficialV))},{l:"Blue C",n:1,v:r=>nf2.format(n(r.blueC))},{l:"Blue V",n:1,v:r=>nf2.format(n(r.blueV))},{l:"Real C",n:1,v:r=>nf2.format(n(r.brlC))},{l:"Real V",n:1,v:r=>nf2.format(n(r.brlV))},{l:"Brecha",c:1,n:1,v:r=>REG.cotizaciones.calc(r)[0][1]},{l:"Fuente",v:r=>`<span class="muted">${esc(r.fuente||"")}</span>`}]}
+};
+function calcBA(r){const neto=n(r.neto),iva=neto*n(r.alic??0)/100,total=neto+iva;const d=parseD(r.fecha)||{m:12};const k=r.moneda==="USD"?E.tcUsd(S,d.m):r.moneda==="R$"?E.tcBrl(S,d.m):1;return {iva,total,ars:total*k,ivaArs:iva*k,netoArs:neto*k};}
+let RG={t:"diario",q:"",mes:"all",soc:"all",page:0};
+function openReg(t){RG={...RG,t,page:0};go("registros");}
+RENDER.registros=function(){
+  const cfg=REG[RG.t];
+  const chips=Object.entries(REG).map(([k,c])=>`<button type="button" class="chip ${k===RG.t?"on":""}" data-t="${k}"><b>${c.icon} ${c.label}</b><span>${num(S[k].length)} registros</span></button>`).join("");
+  $("pg-registros").innerHTML=`
+  <div class="page-head"><div><h2>Registros</h2><p>Base de datos del sistema: cada tabla equivale a una solapa de carga del Excel. Las columnas grises (ƒ) se calculan solas; las blancas se cargan.</p></div>
+    <div class="toolbar">${isAdmin()?'<button class="btn ghost" id="btnImp">⬆ Importar Excel</button>':""}<button class="btn ghost" id="btnExp">⬇ Exportar Excel</button></div></div>
+  <div class="chips">${chips}</div>
+  <div class="card" style="margin-top:14px">
+    <div class="split"><div><h3>${cfg.icon} ${cfg.label}</h3><p class="sub" style="margin:2px 0 0">${esc(cfg.desc)}</p></div><button class="btn" id="btnNew">＋ Nuevo registro</button></div>
+    <p class="note" style="margin:12px 0"><b>Alimenta:</b> ${esc(cfg.feeds)}</p>
+    <div class="toolbar" style="margin-bottom:10px">
+      <input class="in" id="rgQ" placeholder="Buscar…" value="${esc(RG.q)}" style="max-width:280px">
+      ${cfg.date?`<select class="in" id="rgMes" style="max-width:170px"><option value="all">Todos los meses</option>${MESES.map((mm,i)=>`<option value="${i+1}" ${String(RG.mes)===String(i+1)?"selected":""}>${mm}</option>`).join("")}</select>`:""}
+      ${RG.t!=="pnDiario"&&RG.t!=="cotizaciones"?`<select class="in" id="rgSoc" style="max-width:170px"><option value="all">Todas las sociedades</option><option ${RG.soc===SOC_BC?"selected":""}>${SOC_BC}</option><option ${RG.soc===SOC_AR?"selected":""}>${SOC_AR}</option></select>`:""}
+      <span class="status" id="rgInfo"></span>
+      <span style="flex:1"></span><span class="legend-dot" style="background:var(--calc);border:1px solid #cfd8e3"></span><span class="muted" style="font-size:12px">ƒ = fórmula automática</span>
+    </div>
+    <div class="tbl-wrap tall" id="rgTable"></div>
+    <div class="toolbar" style="margin-top:10px;justify-content:center" id="rgPager"></div>
+  </div>`;
+  $("pg-registros").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{RG={t:b.dataset.t,q:"",mes:"all",soc:"all",page:0};render();});
+  $("btnNew").onclick=()=>openForm(RG.t,null);
+  if($("btnImp"))$("btnImp").onclick=()=>$("fileXlsx").click();$("btnExp").onclick=exportExcel;
+  $("rgQ").oninput=e=>{RG.q=e.target.value;RG.page=0;drawRegTable();};
+  if($("rgMes"))$("rgMes").onchange=e=>{RG.mes=e.target.value;RG.page=0;drawRegTable();};
+  if($("rgSoc"))$("rgSoc").onchange=e=>{RG.soc=e.target.value;RG.page=0;drawRegTable();};
+  drawRegTable();
+};
+function drawRegTable(){
+  const cfg=REG[RG.t],q=RG.q.trim().toLowerCase(),PS=60;
+  let rows=S[RG.t].filter(r=>{
+    if(RG.soc!=="all"&&cfg.soc(r)!==RG.soc)return false;
+    if(RG.mes!=="all"&&cfg.date){const c=cfg.mes(r);if(c.mes!==Number(RG.mes))return false;}
+    if(q&&!Object.values(r).some(v=>String(v??"").toLowerCase().includes(q)))return false;return true;});
+  rows.sort((a,b)=>cfg.date?String(b[cfg.date]||"").localeCompare(String(a[cfg.date]||"")):(String(a.unidad).localeCompare(String(b.unidad))||n(b.anio)-n(a.anio)));
+  const pages=Math.max(1,Math.ceil(rows.length/PS));RG.page=Math.min(RG.page,pages-1);
+  const shown=rows.slice(RG.page*PS,RG.page*PS+PS);
+  $("rgInfo").textContent=`${num(rows.length)} de ${num(S[RG.t].length)} registros`;
+  $("rgTable").innerHTML=`<table class="tbl"><thead><tr>${cfg.cols.map(c=>`<th class="${c.n?"n ":""}${c.c?"calc":""}">${esc(c.l)}</th>`).join("")}<th></th></tr></thead><tbody>${
+    shown.map(r=>`<tr class="row-${socCls(cfg.soc(r))}">${cfg.cols.map(c=>`<td class="${c.n?"n ":""}${c.c?"calc":""}">${c.v(r)}</td>`).join("")}<td style="white-space:nowrap"><button class="btn ghost sm" data-ed="${r.id}">Editar</button> <button class="btn danger sm" data-del="${r.id}" title="Eliminar">✕</button></td></tr>`).join("")||`<tr><td colspan="${cfg.cols.length+1}" class="empty">No hay registros con estos filtros.</td></tr>`}</tbody></table>`;
+  $("rgTable").querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>openForm(RG.t,S[RG.t].find(r=>r.id===b.dataset.ed)));
+  $("rgTable").querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>{if(!confirm("¿Eliminar este registro? Los totales se recalculan."))return;S[RG.t]=S[RG.t].filter(r=>r.id!==b.dataset.del);touch();drawRegTable();});
+  $("rgPager").innerHTML=pages>1?`<button class="btn ghost sm" ${RG.page?"":"disabled"} id="pgPrev">‹ Anterior</button><span class="muted">Página ${RG.page+1} de ${pages}</span><button class="btn ghost sm" ${RG.page<pages-1?"":"disabled"} id="pgNext">Siguiente ›</button>`:"";
+  if(pages>1){$("pgPrev").onclick=()=>{RG.page--;drawRegTable();};$("pgNext").onclick=()=>{RG.page++;drawRegTable();};}
+}
+/* Formulario de alta / edición */
+let FORM=null;
+const getK=(o,k)=>k.startsWith("m.")?(o.m||[])[Number(k.slice(2))]:o[k];
+const setK=(o,k,v)=>{if(k.startsWith("m.")){o.m=o.m||Array(12).fill(null);o.m[Number(k.slice(2))]=v;}else o[k]=v;};
+function openForm(t,row){
+  const cfg=REG[t];const draft=row?JSON.parse(JSON.stringify(row)):{id:uid()};
+  if(!row){if(cfg.date)draft[cfg.date]=todayISO();if(t==="gastos"){draft.moneda="$";draft.paga=SOC_BC;}if(t==="pendientes"){draft.estado="Pendiente";draft.moneda="$";draft.tipo="A pagar";draft.soc=SOC_BC;}
+    if(t==="cajaBA"){draft.moneda="$";draft.alic="21";draft.soc=SOC_BC;draft.tipo="IVA compras";}if(t==="saldos")draft.soc=SOC_BC;if(t==="pasajeros"){draft.anio=YR();draft.m=Array(12).fill(null);}}
+  FORM={t,row,draft};
+  $("dlgTitle").textContent=(row?"Editar · ":"Nuevo · ")+cfg.label;$("dlgMsg").textContent="";
+  drawForm();
+  $("dlg").showModal();
+}
+function drawForm(){
+  const {t,draft}=FORM,cfg=REG[t];const groups={};
+  cfg.fields.forEach(f=>{(groups[f.g||"Datos"]??=[]).push(f);});
+  const input=f=>{const v=getK(draft,f.k);
+    if(f.t==="select"){const opts=(typeof f.o==="function"?f.o(draft):f.o)||[];if(v&&!opts.includes(v))opts.push(v);
+      return `<select class="in" data-k="${f.k}">${f.req&&v?"":'<option value="">— Elegir —</option>'}${opts.map(o=>`<option value="${esc(o)}" ${String(o)===String(v??"")?"selected":""}>${esc(o||"(sin especificar)")}</option>`).join("")}</select>`;}
+    if(f.t==="date")return `<input class="in" type="date" data-k="${f.k}" value="${esc(v||"")}">`;
+    if(f.t==="num")return `<input class="in num" type="number" step="any" data-k="${f.k}" value="${v??""}">`;
+    if(f.t==="pct")return `<input class="in num" type="number" step="any" min="0" max="100" data-k="${f.k}" data-pct="1" value="${v===undefined||v===null||v===""?"":n(v)*100}" placeholder="vacío = plan">`;
+    return `<input class="in" type="text" data-k="${f.k}" value="${esc(v||"")}">`;};
+  $("dlgBody").innerHTML=Object.entries(groups).map(([g,fs])=>`<fieldset class="fs"><legend>${esc(g)}</legend><div class="fgrid">${fs.map(f=>`<div class="field" ${f.wide?'style="grid-column:span 2"':""}><label>${esc(f.l)}${f.req?' <span style="color:#c2410c">*</span>':""}</label>${input(f)}${f.h?`<small>${esc(f.h)}</small>`:""}</div>`).join("")}</div></fieldset>`).join("")+
+    `<fieldset class="fs" style="background:#fafbfd"><legend>Cálculos automáticos (ƒ)</legend><div class="calc-preview" id="calcPrev"></div></fieldset>`;
+  const upd=()=>{try{$("calcPrev").innerHTML=cfg.calc(draft).map(([l,v])=>`<div class="kpi"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div></div>`).join("");}catch(e){$("calcPrev").textContent="";}};
+  $("dlgBody").querySelectorAll("[data-k]").forEach(el=>el.onchange=()=>{
+    const f=cfg.fields.find(x=>x.k===el.dataset.k);let v=el.value;
+    if(f.t==="num")v=v===""?(f.k.startsWith("m.")?null:undefined):n(v);
+    if(f.t==="pct")v=v===""?undefined:n(v)/100;
+    if(v===undefined)delete draft[f.k];else setK(draft,f.k,v);
+    if(cfg.fields.some(x=>x.dep===f.k)){cfg.fields.filter(x=>x.dep===f.k).forEach(x=>{const opts=x.o(draft);if(!opts.includes(draft[x.k]))draft[x.k]=x.req?opts[0]||"":"";});drawForm();return;}
+    upd();});
+  upd();
+}
+$("dlgSave").onclick=()=>{
+  const {t,row,draft}=FORM,cfg=REG[t];
+  const miss=cfg.fields.filter(f=>f.req&&(getK(draft,f.k)===undefined||getK(draft,f.k)===""||getK(draft,f.k)===null));
+  if(miss.length){$("dlgMsg").textContent="Completá: "+miss.map(f=>f.l).join(", ");$("dlgMsg").className="status err";return;}
+  if(t==="pasajeros"){draft.anio=Math.round(n(draft.anio));const dup=S.pasajeros.find(p=>p.unidad===draft.unidad&&p.anio===draft.anio&&p.id!==draft.id);if(dup){$("dlgMsg").textContent="Ya existe una fila para esa unidad y año: editala.";$("dlgMsg").className="status err";return;}}
+  if(t==="pnDiario"&&S.pnDiario.some(r=>r.fecha===draft.fecha&&r.id!==draft.id)){$("dlgMsg").textContent="Ya hay un dato para esa fecha.";$("dlgMsg").className="status err";return;}
+  if(row)Object.keys(row).forEach(k=>delete row[k]),Object.assign(row,draft);else S[t].push(draft);
+  touch();$("dlg").close();render();
+};
+
+/* =====================================================================
+   PÁGINA: CAMBIO
+   ===================================================================== */
+let FX={st:"idle",err:"",data:null};
+async function fetchFx(){
+  FX.st="loading";FX.err="";if(PAGE==="cambio")render();
+  try{
+    const get=u=>fetch(u,{cache:"no-store"}).then(r=>{if(!r.ok)throw new Error("HTTP "+r.status);return r.json();});
+    const [of,bl,br]=await Promise.all([get("https://dolarapi.com/v1/dolares/oficial"),get("https://dolarapi.com/v1/dolares/blue"),get("https://dolarapi.com/v1/cotizaciones/brl")]);
+    FX.data={of,bl,br};FX.st="ok";
+    const iso=todayISO();let r=S.cotizaciones.find(x=>x.fecha===iso);if(!r){r={id:uid(),fecha:iso};S.cotizaciones.push(r);}
+    Object.assign(r,{oficialC:of.compra,oficialV:of.venta,blueC:bl.compra,blueV:bl.venta,brlC:br.compra,brlV:br.venta,fuente:"dolarapi.com · "+new Date(of.fechaActualizacion||Date.now()).toLocaleString("es-AR")});touch();
+  }catch(e){FX.st="err";FX.err=e.message||String(e);}
+  if(PAGE==="cambio")render();
+}
+const lastQuote=()=>[...S.cotizaciones].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0]||null;
+let CONV={amt:100000,from:"ARS"};
+RENDER.cambio=function(){
+  if(FX.st==="idle")fetchFx();
+  const q=lastQuote()||{};const m=MON();
+  const avgReg=(mm,k)=>{const l=S.cotizaciones.filter(r=>{const d=parseD(r.fecha);return d&&d.y===YR()&&d.m===mm&&n(r[k]);});return l.length?l.reduce((a,r)=>a+n(r[k]),0)/l.length:0;};
+  const box=(title,cls,c,v,extra,keyC,keyV)=>`<div class="card ${cls}"><div class="split"><h3>${title}</h3><span class="tag ${cls||"gray"}">${q.fecha?fd(q.fecha):"sin dato"}</span></div>
+    <div class="fx-row" style="margin:10px 0 6px"><div><div class="muted" style="font-size:12px">Compra</div><div class="fx">${c?"$ "+nf2.format(c):"—"}</div></div><div><div class="muted" style="font-size:12px">Venta</div><div class="fx">${v?"$ "+nf2.format(v):"—"}</div></div></div>
+    ${extra||""}
+    <details style="margin-top:8px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Cargar a mano</summary><div class="grid g2" style="gap:8px;margin-top:8px">
+      <input class="in num" type="number" step="any" placeholder="Compra" data-fx="${keyC}" value="${q[keyC]??""}"><input class="in num" type="number" step="any" placeholder="Venta" data-fx="${keyV}" value="${q[keyV]??""}"></div></details></div>`;
+  const brecha=n(q.oficialV)?n(q.blueV)/n(q.oficialV)-1:null;
+  const tcM=E.tcUsd(S,m);
+  $("pg-cambio").innerHTML=`
+  <div class="page-head"><div><h2>Cambio</h2><p>Cotizaciones del día y el <b>TC promedio de cada mes</b>, que es el que usa todo el sistema para pasar dólares y reales a pesos (Diario, Gastos, Saldos y Pendientes).</p></div>
+    <div class="toolbar"><span class="status ${FX.st==="err"?"err":FX.st==="ok"?"ok":""}">${FX.st==="loading"?"Consultando cotizaciones…":FX.st==="ok"?"Actualizado desde dolarapi.com":FX.st==="err"?"No se pudo consultar en línea ("+esc(FX.err)+"). Podés cargarlas a mano.":""}</span><button class="btn" id="fxRef">↻ Actualizar cotizaciones</button></div></div>
+  <div class="grid g4">
+    <div class="card mix"><div class="split"><h3>Dólar promedio del mes</h3><span class="tag gray">${MESES[m-1]}</span></div>
+      <div class="fx-row" style="margin:10px 0 6px"><div><div class="muted" style="font-size:12px">TC USD del cierre</div><div class="fx">${tcM?"$ "+nf2.format(tcM):"—"}</div></div><div><div class="muted" style="font-size:12px">TC R$</div><div class="fx">${E.tcBrl(S,m)?"$ "+nf2.format(E.tcBrl(S,m)):"—"}</div></div></div>
+      <div class="muted" style="font-size:12.5px">Promedio oficial registrado en el mes: <b>${avgReg(m,"oficialV")?"$ "+nf2.format(avgReg(m,"oficialV")):"sin registros"}</b></div></div>
+    ${box("Dólar del día (oficial)","bc",n(q.oficialC),n(q.oficialV),`<div class="muted" style="font-size:12.5px">vs TC promedio del mes: ${tcM&&n(q.oficialV)?varTag(n(q.oficialV)/tcM-1,true):"—"}</div>`,"oficialC","oficialV")}
+    ${box("Dólar blue","",n(q.blueC),n(q.blueV),`<div class="muted" style="font-size:12.5px">Brecha con el oficial: <b>${brecha===null?"—":pct(brecha)}</b></div>`,"blueC","blueV")}
+    ${box("Reales (BRL)","ar",n(q.brlC),n(q.brlV),`<div class="muted" style="font-size:12.5px">Pesos por cada real</div>`,"brlC","brlV")}
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>Pesos · conversor</h3><p class="sub">Escribí un importe y elegí su moneda: se convierte a todas las demás.</p>
+      <div class="grid g2" style="gap:8px"><input class="in num" id="cvAmt" type="number" step="any" value="${CONV.amt}"><select class="in" id="cvFrom">${[["ARS","Pesos ($)"],["USD","Dólar oficial"],["BLUE","Dólar blue"],["TCM","Dólar TC promedio del mes"],["BRL","Reales"]].map(([k,l])=>`<option value="${k}" ${CONV.from===k?"selected":""}>${l}</option>`).join("")}</select></div>
+      <div class="list" id="cvOut" style="margin-top:10px"></div></div>
+    <div class="card span2"><h3>Evolución de cotizaciones registradas</h3><p class="sub">Cada vez que se actualiza (o se carga a mano) queda guardada la cotización del día en Registros → Cotizaciones.</p><div class="chart-box sm"><canvas id="chFx"></canvas></div></div>
+  </div>
+  <div class="card mix" style="margin-top:16px"><div class="split"><div><h3>Dólar promedio por mes · ${YR()}</h3><p class="sub" style="margin:2px 0 0">Editá el TC del cierre de cada mes. Si registraste cotizaciones diarias, podés usar su promedio con un clic.</p></div></div>
+    <div class="grid g3" style="margin-top:10px"><div class="span2"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Mes</th><th class="n">TC USD (cierre)</th><th class="n">TC R$ (cierre)</th><th class="n calc">Oficial venta prom. registrado</th><th class="n calc">Blue venta prom.</th><th class="n calc">Real venta prom.</th><th></th></tr></thead><tbody>
+    ${MESES.map((mm,i)=>{const o=avgReg(i+1,"oficialV"),b=avgReg(i+1,"blueV"),r=avgReg(i+1,"brlV");return `<tr class="${i+1===m?"res":""}"><td>${mm}</td><td class="n"><input class="cell" type="number" step="any" data-tc="${i}|usd" value="${S.tc[i]?.usd??""}"></td><td class="n"><input class="cell" type="number" step="any" data-tc="${i}|brl" value="${S.tc[i]?.brl??""}"></td>
+      <td class="n calc">${o?nf2.format(o):"—"}</td><td class="n calc">${b?nf2.format(b):"—"}</td><td class="n calc">${r?nf2.format(r):"—"}</td><td>${o||r?`<button class="btn ghost sm" data-use="${i}">Usar promedios</button>`:""}</td></tr>`;}).join("")}
+    </tbody></table></div></div><div><div class="chart-box lg"><canvas id="chTc"></canvas></div></div></div></div>`;
+  $("fxRef").onclick=fetchFx;
+  $("pg-cambio").querySelectorAll("[data-fx]").forEach(inp=>inp.onchange=()=>{const iso=todayISO();let r=S.cotizaciones.find(x=>x.fecha===iso);if(!r){r={id:uid(),fecha:iso,fuente:"Carga manual"};S.cotizaciones.push(r);}r[inp.dataset.fx]=inp.value===""?null:n(inp.value);r.fuente="Carga manual";touch();render();});
+  $("pg-cambio").querySelectorAll("[data-tc]").forEach(inp=>inp.onchange=()=>{const [i,k]=inp.dataset.tc.split("|");S.tc[+i]=S.tc[+i]||{};S.tc[+i][k]=inp.value===""?null:n(inp.value);touch();render();});
+  $("pg-cambio").querySelectorAll("[data-use]").forEach(b=>b.onclick=()=>{const i=+b.dataset.use;const o=avgReg(i+1,"oficialV"),r=avgReg(i+1,"brlV");if(!confirm(`¿Usar el promedio registrado como TC de ${MESES[i]}? Cambia todas las conversiones de ese mes.`))return;if(o)S.tc[i].usd=Math.round(o*100)/100;if(r)S.tc[i].brl=Math.round(r*100)/100;touch();render();});
+  const conv=()=>{CONV.amt=n($("cvAmt").value);CONV.from=$("cvFrom").value;
+    const rate={ARS:1,USD:n(q.oficialV),BLUE:n(q.blueV),TCM:tcM,BRL:n(q.brlV)};const ars=CONV.amt*(rate[CONV.from]||0);
+    const out=[["Pesos",ars?money(ars):"—"],["Dólar oficial",rate.USD?usd(ars/rate.USD):"—"],["Dólar blue",rate.BLUE?usd(ars/rate.BLUE):"—"],["Dólar TC promedio del mes",rate.TCM?usd(ars/rate.TCM):"—"],["Reales",rate.BRL?cur(ars/rate.BRL,"R$"):"—"]];
+    $("cvOut").innerHTML=out.map(([k,v])=>`<div class="it"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");};
+  $("cvAmt").oninput=conv;$("cvFrom").onchange=conv;conv();
+  const hist=[...S.cotizaciones].sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha))).slice(-90);
+  if(hist.length)chart("chFx",{type:"line",data:{labels:hist.map(r=>fd(r.fecha).slice(0,5)),datasets:[{label:"Oficial venta",data:hist.map(r=>n(r.oficialV)||null),borderColor:BCP[2],backgroundColor:BCP[2],tension:.3},{label:"Blue venta",data:hist.map(r=>n(r.blueV)||null),borderColor:"#64748b",backgroundColor:"#64748b",tension:.3}]},options:{scales:{y:{grid:{color:"#eef1f6"}}}}});
+  else $("chFx").parentElement.innerHTML='<div class="empty">Todavía no hay cotizaciones diarias registradas. Tocá «Actualizar cotizaciones».</div>';
+  chart("chTc",{type:"line",data:{labels:MES3,datasets:[{label:"TC USD promedio",data:S.tc.map(t=>n(t?.usd)||null),borderColor:BCP[1],backgroundColor:BCP[1],tension:.3,yAxisID:"y"},{label:"TC R$",data:S.tc.map(t=>n(t?.brl)||null),borderColor:ARP[2],backgroundColor:ARP[2],tension:.3,yAxisID:"y1"}]},
+    options:{scales:{y:{position:"left",grid:{color:"#eef1f6"}},y1:{position:"right",grid:{display:false}}}}});
+};
+
+/* =====================================================================
+   PÁGINA: ESTADO (representaciones gráficas de Registros)
+   ===================================================================== */
+let ST={per:"mes",cta:""};
+const CAJAS_EF=["Caja pesos","Caja reales","Caja dólares"];
+function ctaOpts(){
+  const g=(soc,pre)=>{const l=S.cuentas.filter(c=>c.soc===soc).map(c=>[pre+"|"+c.cuenta,(ALIAS[c.cuenta]?ALIAS[c.cuenta]+" · ":"")+c.cuenta]);
+    if(S.cuentas.filter(c=>c.soc===soc&&CAJAS_EF.includes(c.cuenta)).length>1)l.push([pre+"|CE*","Caja Efectivo (CE$ + CER$ + CEUSD)"]);return l;};
+  return [["Bajo Cero",g(SOC_BC,"BC")],["Arboris",g(SOC_AR,"AR")],["Caja Buenos Aires",[["BA|IVA compras","IVA compras"],["BA|IVA ventas","IVA ventas"],["BA|*","Posición de IVA (ventas − compras)"]]]];
+}
+RENDER.estado=function(){
+  const per=ST.per,m=MON(),y=YR();
+  const perLbl=per==="mes"?MESES[m-1]+" "+y:"Enero a "+MESES[m-1]+" "+y;
+  const D=S.diario.map(r=>[r,E.diario(S,r)]).filter(([,c])=>inPeriod(c,per));
+  const G=S.gastos.map(r=>[r,E.gasto(S,r)]).filter(([,c])=>inPeriod(c,per));
+  const ingSoc=soc=>D.filter(([,c])=>c.soc===soc).reduce((a,[,c])=>a+c.ingresos,0);
+  const opBC=G.filter(([r])=>GRUPOS_GASTO[SOC_BC].includes(r.imput)).reduce((a,[,c])=>a+c.bc,0);
+  const opAR=G.filter(([r])=>GRUPOS_GASTO[SOC_AR].includes(r.imput)).reduce((a,[,c])=>a+c.ar,0);
+  const iB=ingSoc(SOC_BC),iA=ingSoc(SOC_AR);
+  // resumen por tipo de movimiento
+  const cats=[["Ingresos por ventas (Diario)",iB,iA,"in"]];
+  const imps=[...new Set(S.plan.map(p=>p.imput))];
+  imps.forEach(imp=>{const g=G.filter(([r])=>r.imput===imp);if(!g.length)return;
+    const op=!NO_GASTO.includes(imp);const b=g.reduce((a,[r,c])=>a+(op||imp==="Inversiones y mejoras"?c.bc:(r.paga===SOC_BC?c.ars:0)),0),a2=g.reduce((a,[r,c])=>a+(op||imp==="Inversiones y mejoras"?c.ar:(r.paga===SOC_AR?c.ars:0)),0);
+    cats.push([imp+(op?"":imp==="Inversiones y mejoras"?" (no es gasto)":" (no es gasto · pagos)"),b,a2,op?"g":"x"]);});
+  // medios de cobro
+  const medios=[["Efectivo $",c=>n(c[0].efe)],["Efectivo R$ (en $)",c=>c[1].efeR$],["Efectivo USD (en $)",c=>c[1].efeUsd$],["Tarjeta",c=>n(c[0].tarjeta)],["Página web",c=>n(c[0].pweb)]];
+  const medSoc=(f,soc)=>D.filter(([,c])=>c.soc===soc).reduce((a,x)=>a+f(x),0);
+  // egresos por cuenta (quién paga y desde qué cuenta)
+  const ctas=[...new Set(S.gastos.map(r=>r.cuenta||""))].sort((a,b)=>!a?1:!b?-1:a.localeCompare(b));
+  const egr=(cta,soc)=>G.filter(([r])=>(r.cuenta||"")===cta&&r.paga===soc).reduce((a,[,c])=>a+c.ars,0);
+  $("pg-estado").innerHTML=`
+  <div class="page-head"><div><h2>Estado</h2><p>Representación gráfica de todo lo cargado en Registros: resumen de movimientos, reparto por sociedad, medios de pago y análisis de cada cuenta.</p></div>
+    <div class="seg"><button class="${per==="mes"?"on":""}" data-per="mes">Mes: ${MESES[m-1]}</button><button class="${per==="anio"?"on":""}" data-per="anio">Acumulado del año</button></div></div>
+  <div class="grid g4">
+    <div class="kpi dark"><div class="l">Movimientos registrados · ${esc(perLbl)}</div><div class="v">${num(D.length+G.length)}</div><div class="d">${num(D.length)} ventas · ${num(G.length)} pagos</div></div>
+    <div class="kpi"><div class="l">Ingresos totales</div><div class="v">${money(iB+iA)}</div><div class="d"><span style="color:var(--bc-700)">BC ${money(iB)}</span> · <span style="color:var(--ar-700)">Arb ${money(iA)}</span></div></div>
+    <div class="kpi"><div class="l">Gastos operativos imputados</div><div class="v">${money(opBC+opAR)}</div><div class="d"><span style="color:var(--bc-700)">BC ${money(opBC)}</span> · <span style="color:var(--ar-700)">Arb ${money(opAR)}</span></div></div>
+    <div class="kpi"><div class="l">Resultado</div><div class="v ${iB+iA-opBC-opAR>=0?"up":"down"}">${money(iB+iA-opBC-opAR)}</div><div class="d">Margen ${iB+iA?pct((iB+iA-opBC-opAR)/(iB+iA)):"—"}</div></div>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card span2"><h3>1 · Resumen de todos los movimientos</h3><p class="sub">Ventas del Diario y pagos de Gastos agrupados por imputación. Los gastos se muestran según el reparto del plan de cuentas; los movimientos que no son gasto (entre sociedades, socios, otras cuentas del grupo) se muestran por quién pagó.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Movimiento</th><th class="n" style="color:var(--bc-700)">Bajo Cero</th><th class="n" style="color:var(--ar-700)">Arboris</th><th class="n">Total</th><th style="width:160px">Reparto</th></tr></thead><tbody>
+      ${cats.map(([l,b,a,k])=>`<tr class="${k==="in"?"res":""}"><td>${k==="x"?`<span class="muted">${esc(l)}</span>`:esc(l)}</td><td class="n">${money(b)}</td><td class="n">${money(a)}</td><td class="n"><b>${money(b+a)}</b></td><td>${b+a?`<div class="bar"><i style="width:${b/(b+a)*100}%;background:var(--bc-500)"></i><i style="width:${a/(b+a)*100}%;background:var(--ar-500)"></i></div>`:""}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    <div class="card"><h3>Ingresos y gastos por mes</h3><p class="sub">Todo el año, por sociedad.</p><div class="chart-box lg"><canvas id="chEvo"></canvas></div></div>
+  </div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>2 · Ingresos por sociedad</h3><p class="sub">${esc(perLbl)}</p><div class="chart-box sm"><canvas id="chPieI"></canvas></div></div>
+    <div class="card"><h3>Gastos por sociedad</h3><p class="sub">Gastos operativos imputados</p><div class="chart-box sm"><canvas id="chPieG"></canvas></div></div>
+    <div class="card"><h3>Gastos por imputación</h3><p class="sub">Barras por sociedad</p><div class="chart-box sm"><canvas id="chImp"></canvas></div></div>
+  </div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card"><h3>3 · Ingresos por medio de cobro</h3><p class="sub">Unifica las cobranzas del Diario por tipo de pago (R$ y USD convertidos con el TC del mes).</p>
+      <div class="chart-box sm"><canvas id="chMed"></canvas></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Medio</th><th class="n">BC</th><th class="n">Arboris</th><th class="n">Total</th><th class="n">%</th></tr></thead><tbody>
+      ${medios.map(([l,f])=>{const b=medSoc(f,SOC_BC),a=medSoc(f,SOC_AR);return `<tr><td>${l}</td><td class="n">${money(b)}</td><td class="n">${money(a)}</td><td class="n"><b>${money(a+b)}</b></td><td class="n">${iA+iB?pct((a+b)/(iA+iB)):"—"}</td></tr>`;}).join("")}</tbody></table></div></div>
+    <div class="card"><h3>Egresos por cuenta / caja de pago</h3><p class="sub">Unifica los pagos de Gastos por la cuenta o caja desde donde salió el dinero (todo en $).</p>
+      <div class="chart-box sm"><canvas id="chCta"></canvas></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Cuenta / caja</th><th class="n">Pagó BC</th><th class="n">Pagó Arboris</th><th class="n">Total</th></tr></thead><tbody>
+      ${ctas.map(c=>{const b=egr(c,SOC_BC),a=egr(c,SOC_AR);if(!a&&!b)return "";return `<tr><td>${c?ctaName(c):'<span class="muted">Sin cuenta (cierre mensual cargado como total)</span>'}</td><td class="n">${money(b)}</td><td class="n">${money(a)}</td><td class="n"><b>${money(a+b)}</b></td></tr>`;}).join("")}</tbody></table></div></div>
+  </div>
+  <div class="card mix" style="margin-top:16px" id="ctaCard"></div>`;
+  $("pg-estado").querySelectorAll("[data-per]").forEach(b=>b.onclick=()=>{ST.per=b.dataset.per;render();});
+  const bc=RES(SOC_BC),ar=RES(SOC_AR);
+  chart("chEvo",{type:"bar",data:{labels:MES3,datasets:[{label:"Ingresos BC",data:bc.totIng,backgroundColor:BCP[2],stack:"i"},{label:"Ingresos Arboris",data:ar.totIng,backgroundColor:ARP[3],stack:"i"},{label:"Gastos BC",data:bc.totG,backgroundColor:BCP[5],stack:"g"},{label:"Gastos Arboris",data:ar.totG,backgroundColor:ARP[5],stack:"g"}]},options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:ttMoney,legend:{position:"bottom",labels:{boxWidth:10}}}}});
+  const pie=(id,a,b)=>chart(id,{type:"doughnut",data:{labels:["Bajo Cero","Arboris"],datasets:[{data:[a,b],backgroundColor:[BCP[2],ARP[3]],borderWidth:2,borderColor:"#fff"}]},options:{cutout:"58%",plugins:{tooltip:{callbacks:{label:c=>`${c.label}: ${money(c.parsed)} (${pct(c.parsed/(a+b||1))})`}},legend:{position:"bottom"}}}});
+  pie("chPieI",iB,iA);pie("chPieG",opBC,opAR);
+  const gi=[...new Set([...GRUPOS_GASTO[SOC_BC],...GRUPOS_GASTO[SOC_AR],"Inversiones y mejoras"])];
+  chart("chImp",{type:"bar",data:{labels:gi,datasets:[{label:"BC",data:gi.map(g=>G.filter(([r])=>r.imput===g).reduce((a,[,c])=>a+c.bc,0)),backgroundColor:BCP[2]},{label:"Arboris",data:gi.map(g=>G.filter(([r])=>r.imput===g).reduce((a,[,c])=>a+c.ar,0)),backgroundColor:ARP[3]}]},options:{indexAxis:"y",scales:{x:axisMoney,y:{grid:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(c.parsed.x)}`}}}}});
+  chart("chMed",{type:"bar",data:{labels:medios.map(x=>x[0]),datasets:[{label:"BC",data:medios.map(([,f])=>medSoc(f,SOC_BC)),backgroundColor:BCP[2],stack:"s"},{label:"Arboris",data:medios.map(([,f])=>medSoc(f,SOC_AR)),backgroundColor:ARP[3],stack:"s"}]},options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:ttMoney}}});
+  const cl=ctas.filter(c=>egr(c,SOC_BC)||egr(c,SOC_AR));
+  chart("chCta",{type:"bar",data:{labels:cl.map(c=>c||"Sin cuenta"),datasets:[{label:"Pagó BC",data:cl.map(c=>egr(c,SOC_BC)),backgroundColor:BCP[2],stack:"s"},{label:"Pagó Arboris",data:cl.map(c=>egr(c,SOC_AR)),backgroundColor:ARP[3],stack:"s"}]},options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:ttMoney}}});
+  renderCuenta();
+};
+function renderCuenta(){
+  const OPTS=ctaOpts();const flat=OPTS.flatMap(x=>x[1].map(o=>o[0]));if(!flat.includes(ST.cta))ST.cta=flat[0];
+  const [g,key]=ST.cta.split("|"),per=ST.per,m=MON(),y=YR();
+  const sel=`<select class="in" id="ctaSel" style="max-width:360px">${OPTS.filter(x=>x[1].length).map(([lab,ops])=>`<optgroup label="${lab}">${ops.map(([v,l])=>`<option value="${v}" ${v===ST.cta?"selected":""}>${esc(l)}</option>`).join("")}</optgroup>`).join("")}</select>`;
+  let body="";
+  if(g==="BA"){
+    const rows=S.cajaBA.filter(r=>(key==="*"?/IVA/.test(r.tipo):r.tipo===key)).filter(r=>{const d=parseD(r.fecha);return d&&inPeriod({anio:d.y,mes:d.m},per);});
+    const sum=(t,k)=>S.cajaBA.filter(r=>r.tipo===t).filter(r=>{const d=parseD(r.fecha);return d&&inPeriod({anio:d.y,mes:d.m},per);}).reduce((a,r)=>a+calcBA(r)[k],0);
+    const tot=k=>rows.reduce((a,r)=>a+calcBA(r)[k],0);
+    const posIVA=sum("IVA ventas","ivaArs")-sum("IVA compras","ivaArs");
+    const usdBA=[SOC_BC,SOC_AR].map(s=>saldoCuenta(s,"Dólares caja Bs As",E.ultimoMesConSaldos(S,m)));
+    const pagosBA=S.gastos.filter(r=>r.tipo==="Caja Buenos Aires").map(r=>[r,E.gasto(S,r)]).filter(([,c])=>inPeriod(c,per));
+    body=`<div class="grid g4" style="margin-top:14px">
+      <div class="kpi"><div class="l">${key==="*"?"Comprobantes IVA":esc(key)} · neto</div><div class="v">${money(tot("netoArs"))}</div><div class="d">${num(rows.length)} comprobantes</div></div>
+      <div class="kpi"><div class="l">IVA</div><div class="v">${money(tot("ivaArs"))}</div><div class="d">Total con IVA ${money(tot("ars"))}</div></div>
+      <div class="kpi dark"><div class="l">Posición de IVA (débito − crédito)</div><div class="v">${money(posIVA)}</div><div class="d">${posIVA>0?"Saldo a pagar":"Saldo a favor"} · ventas ${money(sum("IVA ventas","ivaArs"))} / compras ${money(sum("IVA compras","ivaArs"))}</div></div>
+      <div class="kpi"><div class="l">Dólares caja Bs As (saldos)</div><div class="v" style="font-size:18px"><span style="color:var(--bc-700)">${usdBA[0]?usd(usdBA[0].saldo):"—"}</span> · <span style="color:var(--ar-700)">${usdBA[1]?usd(usdBA[1].saldo):"—"}</span></div><div class="d">BC · Arboris · pagos a cuenta Caja Bs As: ${money(pagosBA.reduce((a,[,c])=>a+c.ars,0))}</div></div></div>
+      <div class="grid g2" style="margin-top:14px"><div class="chart-box"><canvas id="chCtaM"></canvas></div>
+      <div class="tbl-wrap" style="max-height:300px"><table class="tbl"><thead><tr><th>Fecha</th><th>Soc.</th><th>Tipo</th><th>Comprobante</th><th class="n">Neto</th><th class="n">IVA</th><th class="n">Total $</th></tr></thead><tbody>
+      ${rows.sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).map(r=>{const c=calcBA(r);return `<tr class="row-${socCls(r.soc)}"><td>${fd(r.fecha)}</td><td>${pillSoc(r.soc)}</td><td>${esc(r.tipo)}</td><td>${esc(r.comprobante||"")} <span class="muted">${esc(r.contraparte||"")}</span></td><td class="n">${cur(r.neto,r.moneda)}</td><td class="n">${cur(c.iva,r.moneda)}</td><td class="n">${money(c.ars)}</td></tr>`;}).join("")||`<tr><td colspan="7" class="empty">Sin comprobantes en el período. Cargalos en Registros → Caja Buenos Aires (IVA).</td></tr>`}</tbody></table></div></div>
+      <div class="toolbar" style="margin-top:10px"><button class="btn ghost sm" onclick="openReg('cajaBA')">Cargar comprobantes de Caja Buenos Aires</button></div>`;
+    $("ctaCard").innerHTML=`<div class="split"><div><h3>4 · Análisis por cuenta</h3><p class="sub" style="margin:2px 0 0">Elegí una cuenta de cada sociedad o la Caja Buenos Aires.</p></div>${sel}</div>${body}`;
+    const series=t=>MES3.map((_,i)=>S.cajaBA.filter(r=>r.tipo===t&&(parseD(r.fecha)||{}).m===i+1&&(parseD(r.fecha)||{}).y===y).reduce((a,r)=>a+calcBA(r).ivaArs,0));
+    chart("chCtaM",{type:"bar",data:{labels:MES3,datasets:[{label:"IVA ventas (débito)",data:series("IVA ventas"),backgroundColor:"#334155"},{label:"IVA compras (crédito)",data:series("IVA compras"),backgroundColor:"#94a3b8"}]},options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:ttMoney}}});
+  }else{
+    const soc=g==="BC"?SOC_BC:SOC_AR,cls=g==="BC"?"bc":"ar",pal=g==="BC"?BCP:ARP;
+    const list=key==="CE*"?CAJAS_EF.filter(c=>S.cuentas.some(x=>x.soc===soc&&x.cuenta===c)):[key];
+    const sal=mm=>list.map(c=>saldoCuenta(soc,c,mm)).filter(Boolean);
+    const mS=E.ultimoMesConSaldos(S,m);const now=sal(mS),prev=mS>1?sal(mS-1):[];
+    const totU=a=>a.reduce((s,x)=>s+x.usd,0);
+    const single=list.length===1?S.cuentas.find(c=>c.soc===soc&&c.cuenta===list[0]):null;
+    const mov=S.gastos.filter(r=>r.paga===soc&&list.includes(r.cuenta)).map(r=>[r,E.gasto(S,r)]).filter(([,c])=>inPeriod(c,per)).sort((a,b)=>String(b[0].fecha).localeCompare(String(a[0].fecha)));
+    const egT=mov.reduce((a,[,c])=>a+c.ars,0);
+    const byImp={};mov.forEach(([r,c])=>{byImp[r.imput]=(byImp[r.imput]||0)+c.ars;});
+    body=`<div class="grid g4" style="margin-top:14px">
+      <div class="kpi ${cls}"><div class="l">Saldo al cierre de ${mS?MESES[mS-1]:"—"}</div><div class="v">${single&&now[0]?cur(now[0].saldo,single.moneda):usd(totU(now))}</div><div class="d">${single&&single.moneda!=="USD"&&now[0]?usd(now[0].usd):list.length>1?now.map(x=>cur(x.saldo,x.moneda)).join(" · "):""}</div></div>
+      <div class="kpi ${cls}"><div class="l">Variación vs cierre anterior</div><div class="v" style="font-size:19px">${prev.length?usd(totU(now)-totU(prev)):"—"}</div><div class="d">${prev.length?varTag(varPct(totU(now),totU(prev))):"Sin cierre anterior"}</div></div>
+      <div class="kpi"><div class="l">Pagos desde la cuenta · ${per==="mes"?MESES[m-1]:"acum."}</div><div class="v">${money(egT)}</div><div class="d">${num(mov.length)} movimientos en Gastos</div></div>
+      <div class="kpi"><div class="l">Principal destino</div><div class="v" style="font-size:17px">${esc(Object.entries(byImp).sort((a,b)=>b[1]-a[1])[0]?.[0]||"—")}</div><div class="d">${Object.keys(byImp).length} imputaciones distintas</div></div></div>
+      <div class="grid g2" style="margin-top:14px"><div class="chart-box"><canvas id="chCtaM"></canvas></div>
+      <div class="tbl-wrap" style="max-height:300px"><table class="tbl"><thead><tr><th>Fecha</th><th>Cuenta</th><th>Imputación / tipo</th><th>Detalle</th><th class="n">Monto $</th></tr></thead><tbody>
+      ${mov.map(([r,c])=>`<tr><td>${fd(r.fecha)}</td><td>${ctaName(r.cuenta)}</td><td>${esc(r.imput)} <span class="muted">· ${esc(r.tipo)}</span></td><td class="muted">${esc(r.detalle||"")}</td><td class="n">${money(c.ars)}</td></tr>`).join("")||`<tr><td colspan="5" class="empty">Sin pagos registrados desde esta cuenta en el período.</td></tr>`}</tbody></table></div></div>`;
+    $("ctaCard").innerHTML=`<div class="split"><div><h3>4 · Análisis por cuenta</h3><p class="sub" style="margin:2px 0 0">Saldo de cierre (Saldos) y pagos realizados desde la cuenta (Gastos).</p></div>${sel}</div>${body}`;
+    const salS=MES3.map((_,i)=>{const a=sal(i+1);return a.length?totU(a):null;});
+    const egS=MES3.map((_,i)=>S.gastos.filter(r=>r.paga===soc&&list.includes(r.cuenta)).reduce((a,r)=>{const c=E.gasto(S,r);return a+(c.anio===y&&c.mes===i+1?c.ars/(E.tcUsd(S,i+1)||1):0);},0));
+    chart("chCtaM",{type:"bar",data:{labels:MES3,datasets:[{type:"line",label:"Saldo de cierre (USD)",data:salS,borderColor:pal[1],backgroundColor:pal[1],tension:.3,spanGaps:true},{label:"Pagos del mes (USD)",data:egS,backgroundColor:pal[5]}]},options:{scales:{y:{grid:{color:"#eef1f6"},ticks:{callback:v=>"US$ "+nf0.format(v)}},x:{grid:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${usd(c.parsed.y)}`}}}}});
+  }
+  $("ctaSel").onchange=e=>{ST.cta=e.target.value;renderCuenta();};
+}
+
+/* =====================================================================
+   PÁGINA: RESULTADOS (Resultado BC / Arboris · Punto de equilibrio · Unidades · Entre sociedades)
+   ===================================================================== */
+let RS={soc:SOC_BC,open:new Set()};
+RENDER.resultados=function(){
+  const soc=RS.soc,R=RES(soc),m=MON(),cls=socCls(soc),i=m-1;
+  const q=v=>[0,1,2,3].map(t=>v.slice(t*3,t*3+3).reduce((a,x)=>a+x,0));
+  const tot=v=>v.reduce((a,x)=>a+x,0);const ingY=tot(R.totIng);
+  const fmtRow=(r)=>{const isU=r.kind==="usd"||r.kind==="accusd",isTc=r.kind==="tc";const f=v=>isTc?(v?nf2.format(v):"—"):isU?usd(v):money(v);
+    const year=r.kind==="acc"||r.kind==="accusd"?r.vals[11]:isTc?null:tot(r.vals);
+    const qs=r.kind==="acc"||r.kind==="accusd"?[2,5,8,11].map(k=>r.vals[k]):isTc?[null,null,null,null]:q(r.vals);
+    return `${r.vals.map((v,k)=>`<td class="n ${k===i?"sel":""}">${f(v)}</td>`).join("")}${qs.map(v=>`<td class="n calc">${v===null?"":f(v)}</td>`).join("")}<td class="n calc"><b>${year===null?"":f(year)}</b></td><td class="n calc">${!isU&&!isTc&&r.kind!=="acc"&&ingY?pct(year/ingY):""}</td>`;};
+  const body=R.rows.map(r=>{
+    if(r.kind==="head")return `<tr class="head"><td colspan="19">${esc(r.label)}</td></tr>`;
+    if(r.kind==="sub"&&!RS.open.has(r.grupo))return "";
+    const c={group:"grp"+(RS.open.has(r.label)?" open":""),total:"tot",result:"res",usd:"tot",sub:"sub"}[r.kind]||"";
+    return `<tr class="${c}" ${r.kind==="group"?`data-grp="${esc(r.label)}"`:""}><td style="white-space:nowrap">${esc(r.label)}</td>${fmtRow(r)}</tr>`;}).join("");
+  const eq=EQ(soc),es=ES(),pal=soc===SOC_BC?BCP:ARP;
+  const pk=soc===SOC_BC?"bc":"ar";
+  const uc=(title,s,cls2,rows)=>`<div class="kpi ${cls2}"><div class="l"><span>${title}</span>${pillSoc(s)}</div>${rows.map(([l,a,b,inv,fmt])=>`<div class="split" style="margin-top:6px;font-size:13px"><span class="muted">${l}</span><span><b>${fmt(a)}</b> ${varTag(m>1?varPct(a,b):null,inv)}</span></div>`).join("")}</div>`;
+  const U=(u,campo)=>[E.ingresosUnidad(S,u,m),m>1?E.ingresosUnidad(S,u,m-1):0];
+  const G=(soc2,imp,mm)=>E.gastoSum(S,soc2,mm,r=>r.imput===imp);
+  const dS=(u,c,mm)=>E.diarioSum(S,u,mm,c);
+  const mb=[dS("Monki Bar","ingresos",m)-G(SOC_BC,"Bar Cálido",m),m>1?dS("Monki Bar","ingresos",m-1)-G(SOC_BC,"Bar Cálido",m-1):0];
+  const ib=[dS("Icebar","ingresos",m)-G(SOC_BC,"Bar Frío",m),m>1?dS("Icebar","ingresos",m-1)-G(SOC_BC,"Bar Frío",m-1):0];
+  const fo=[dS("Fotografía","ingresos",m)-G(SOC_BC,"Fotografía",m),m>1?dS("Fotografía","ingresos",m-1)-G(SOC_BC,"Fotografía",m-1):0];
+  const fp=[dS("Fly Park","ingresos",m)-G(SOC_AR,"Fly Park",m),m>1?dS("Fly Park","ingresos",m-1)-G(SOC_AR,"Fly Park",m-1):0];
+  const paxI=k=>dS("Icebar","pax",k),paxF=k=>dS("Fly Park","pax",k);
+  const comis=(soc2,imp,mm)=>E.gastoSum(S,soc2,mm,r=>r.imput===imp&&r.tipo==="Comisiones");
+  $("pg-resultados").innerHTML=`
+  <div class="page-head"><div><h2>Resultados de gestión</h2><p>Todo automático desde Diario y Gastos. Tocá un grupo de gastos (▸) para ver el detalle. La columna amarilla es el mes de cierre elegido.</p></div>
+    <div class="toolbar"><div class="seg"><button class="bc ${soc===SOC_BC?"on":""}" data-soc="${SOC_BC}">Bajo Cero S.R.L.</button><button class="ar ${soc===SOC_AR?"on":""}" data-soc="${SOC_AR}">Arboris S.R.L.</button></div>
+    <button class="btn ghost sm" id="rsAll">${RS.open.size?"Contraer":"Expandir"} todo</button></div></div>
+  <div class="card ${cls}"><h3>Resultado de gestión · ${esc(soc)} S.R.L.</h3>
+    <div class="tbl-wrap" style="margin-top:10px"><table class="tbl ${cls}-theme"><thead><tr><th>Concepto</th>${MES3.map((x,k)=>`<th class="n ${k===i?"sel":""}">${x}</th>`).join("")}<th class="n calc">1º T</th><th class="n calc">2º T</th><th class="n calc">3º T</th><th class="n calc">4º T</th><th class="n calc">Año</th><th class="n calc">% s/ ing.</th></tr></thead><tbody>${body}</tbody></table></div></div>
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card ${cls}"><h3>Punto de equilibrio · ${soc===SOC_BC?"Icebar":"Fly Park"}</h3><p class="sub">Pax necesarios = costos fijos ÷ (precio de venta − costo variable unitario). Verde = se superó · rojo = no se llegó. Precio y costo variable se editan acá.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th>${MES3.map((x,k)=>`<th class="n ${k===i?"sel":""}">${x}</th>`).join("")}<th class="n calc">Prom.</th><th class="n calc">Anual</th></tr></thead><tbody>
+        <tr><td>Costos fijos</td>${eq.cf.map((v,k)=>`<td class="n ${k===i?"sel":""}">${num(v)}</td>`).join("")}<td class="n calc">${num(eq.avg.cf)}</td><td class="n calc">${num(eq.avg.cf*12)}</td></tr>
+        <tr><td>Precio unitario</td>${eq.precio.map((v,k)=>`<td class="n ${k===i?"sel":""}"><input class="cell" style="width:80px" type="number" data-pe="precio|${k}" value="${S.pe[pk].precio[k]??""}"></td>`).join("")}<td class="n calc">${num(eq.avg.precio)}</td><td class="calc"></td></tr>
+        <tr><td>Costo variable unit.</td>${eq.cv.map((v,k)=>`<td class="n ${k===i?"sel":""}"><input class="cell" style="width:70px" type="number" data-pe="cv|${k}" value="${S.pe[pk].cv[k]||""}"></td>`).join("")}<td class="n calc">${num(eq.avg.cv)}</td><td class="calc"></td></tr>
+        <tr class="res"><td>Punto de equilibrio (pax)</td>${eq.pePax.map((v,k)=>`<td class="n ${k===i?"sel":""}">${num(v)}</td>`).join("")}<td class="n calc">${num(eq.avg.pePax)}</td><td class="n calc">${num(eq.avg.pePax*12)}</td></tr>
+        <tr><td>Pasajeros reales</td>${eq.pax.map((v,k)=>`<td class="n ${k===i?"sel":""} ${eq.pePax[k]?(v>=eq.pePax[k]?"up":"down"):""}"><b>${num(v)}</b></td>`).join("")}<td class="n calc">${num(eq.avg.pax)}</td><td class="n calc">${num(eq.avg.pax*12)}</td></tr>
+      </tbody></table></div><div class="chart-box sm" style="margin-top:12px"><canvas id="chPE"></canvas></div></div>
+    <div class="card mix"><h3>¿Cómo salió cada unidad? · ${MESES[i]}</h3><p class="sub">Ingreso neto = ventas de la unidad − sus costos propios (no incluye Expensas). ▲ verde = mejora vs mes anterior (en costos y comisiones subir es empeorar).</p>
+      <div class="grid g2" style="gap:10px">
+        ${uc("Monki Bar",SOC_BC,"bc",[["Ingreso neto",...mb,false,money],["Ingresos",dS("Monki Bar","ingresos",m),m>1?dS("Monki Bar","ingresos",m-1):0,false,money],["Costos Bar Cálido",G(SOC_BC,"Bar Cálido",m),m>1?G(SOC_BC,"Bar Cálido",m-1):0,true,money],["Comensales",dS("Monki Bar","comensales",m),m>1?dS("Monki Bar","comensales",m-1):0,false,num]])}
+        ${uc("Icebar",SOC_BC,"bc",[["Ingreso neto",...ib,false,money],["Pasajeros (vend.+lib.+free)",paxI(m),m>1?paxI(m-1):0,false,num],["Neto por ticket",paxI(m)?dS("Icebar","ingresos",m)/paxI(m):0,m>1&&paxI(m-1)?dS("Icebar","ingresos",m-1)/paxI(m-1):0,false,money],["Comisiones",comis(SOC_BC,"Bar Frío",m),m>1?comis(SOC_BC,"Bar Frío",m-1):0,true,money]])}
+        ${uc("Fotografía",SOC_BC,"bc",[["Ingreso neto",...fo,false,money],["Fotos vendidas",dS("Fotografía","fotos",m),m>1?dS("Fotografía","fotos",m-1):0,false,num],["% fotos / pax Icebar",paxI(m)?dS("Fotografía","fotos",m)/paxI(m):0,m>1&&paxI(m-1)?dS("Fotografía","fotos",m-1)/paxI(m-1):0,false,v=>pct(v)]])}
+        ${uc("Fly Park",SOC_AR,"ar",[["Ingreso neto",...fp,false,money],["Pasajeros (vend.+lib.+free)",paxF(m),m>1?paxF(m-1):0,false,num],["Neto por ticket",paxF(m)?dS("Fly Park","ingresos",m)/paxF(m):0,m>1&&paxF(m-1)?dS("Fly Park","ingresos",m-1)/paxF(m-1):0,false,money],["Comisiones",comis(SOC_AR,"Fly Park",m),m>1?comis(SOC_AR,"Fly Park",m-1):0,true,money]])}
+      </div></div>
+  </div>
+  <div class="card mix" style="margin-top:16px"><div class="split"><div><h3>Cuenta entre sociedades · BC / Arboris</h3><p class="sub" style="margin:2px 0 0">Se arma sola desde Gastos: lo que una sociedad paga por la otra y las transferencias «Entre sociedades». Positivo = Arboris le debe a BC.</p></div>
+    <div class="kpi ${es.saldo[i]>=0?"bc":"ar"}" style="min-width:260px"><div class="l">Saldo al cierre de ${MESES[i]}</div><div class="v" style="font-size:20px">${money(Math.abs(es.saldo[i]))}</div><div class="d"><b>${es.quien[i]}</b></div></div></div>
+    <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><thead><tr><th>Concepto</th>${MES3.map((x,k)=>`<th class="n ${k===i?"sel":""}">${x}</th>`).join("")}</tr></thead><tbody>
+      <tr><td>Saldo inicial del año <input class="cell" type="number" id="esIni" value="${n(S.esInicial)||""}" placeholder="0"></td><td colspan="12"></td></tr>
+      ${[["(+) Gastos pagados por BC que le corresponden a Arboris",es.a],["(−) Gastos pagados por Arboris que le corresponden a BC",es.b],["(+) Transferencias de BC a Arboris",es.c],["(−) Transferencias de Arboris a BC",es.d]].map(([l,v])=>`<tr><td>${l}</td>${v.map((x,k)=>`<td class="n ${k===i?"sel":""}">${x?money(x):"·"}</td>`).join("")}</tr>`).join("")}
+      <tr class="tot"><td>Movimiento neto del mes</td>${es.neto.map((x,k)=>`<td class="n ${k===i?"sel":""}">${money(x)}</td>`).join("")}</tr>
+      <tr class="res"><td>Saldo al cierre</td>${es.saldo.map((x,k)=>`<td class="n ${k===i?"sel":""}">${money(x)}</td>`).join("")}</tr>
+      <tr><td>Quién le debe a quién</td>${es.quien.map((x,k)=>`<td class="n ${k===i?"sel":""}" style="font-size:11px">${x}</td>`).join("")}</tr></tbody></table></div></div>`;
+  $("pg-resultados").querySelectorAll("[data-soc]").forEach(b=>b.onclick=()=>{RS.soc=b.dataset.soc;render();});
+  $("pg-resultados").querySelectorAll("[data-grp]").forEach(tr=>tr.onclick=()=>{const g=tr.dataset.grp;RS.open.has(g)?RS.open.delete(g):RS.open.add(g);render();});
+  $("rsAll").onclick=()=>{if(RS.open.size)RS.open.clear();else R.rows.filter(r=>r.kind==="group").forEach(r=>RS.open.add(r.label));render();};
+  $("pg-resultados").querySelectorAll("[data-pe]").forEach(inp=>inp.onchange=()=>{const [k,ix]=inp.dataset.pe.split("|");S.pe[pk][k][+ix]=inp.value===""?(k==="cv"?0:null):n(inp.value);touch();render();});
+  $("esIni").onchange=e=>{S.esInicial=n(e.target.value);touch();render();};
+  chart("chPE",{type:"bar",data:{labels:MES3,datasets:[{type:"line",label:"Punto de equilibrio (pax)",data:eq.pePax.map(v=>v||null),borderColor:"#c2410c",backgroundColor:"#c2410c",borderDash:[5,4],tension:.2},{label:"Pasajeros reales",data:eq.pax,backgroundColor:eq.pax.map((v,k)=>eq.pePax[k]&&v>=eq.pePax[k]?pal[2]:pal[5])}]},options:{scales:{y:{grid:{color:"#eef1f6"}},x:{grid:{display:false}}}}});
+};
+
+/* =====================================================================
+   PÁGINA: PASAJEROS (evolución, variación y captación)
+   ===================================================================== */
+let PX={u:"Icebar",var:false};
+RENDER.pasajeros=function(){
+  const y=YR(),m=MON(),u=PX.u;
+  const years=[...new Set(S.pasajeros.filter(p=>p.unidad===u).map(p=>p.anio))].sort((a,b)=>a-b);
+  if(!years.includes(y))years.push(y);
+  const val=(yy,k)=>E.pasajerosMes(S,u,yy,k);
+  const acc=(uu,yy)=>{let a=0;for(let k=1;k<=m;k++)a+=E.pasajerosMes(S,uu,yy,k);return a;};
+  const pnAll=()=>{for(let k=1;k<=m;k++)if(!E.pasajerosMes(S,"PN Iguazú",y,k))return false;return true;};
+  const max=Math.max(1,...years.flatMap(yy=>MES3.map((_,k)=>val(yy,k+1))));
+  const shade=v=>{if(!v)return "";const a=(v/max);const base=u==="Fly Park"?"52,178,106":u==="Icebar"?"59,130,246":"100,116,139";return `background:rgba(${base},${(0.06+a*0.42).toFixed(2)})`;};
+  const resumen=["Icebar","Fly Park","PN Iguazú"].map(uu=>{const a=E.pasajerosMes(S,uu,y,m),b=E.pasajerosMes(S,uu,y-1,m),c=acc(uu,y),d=acc(uu,y-1),pn=E.pasajerosMes(S,"PN Iguazú",y,m),pnA=acc("PN Iguazú",y);
+    return `<tr class="row-${uu==="Icebar"?"bc":uu==="Fly Park"?"ar":""}"><td><b>${uu}</b></td><td class="n">${num(a)}</td><td class="n">${num(b)}</td><td class="n">${varTag(varPct(a,b))}</td><td class="n">${num(c)}</td><td class="n">${num(d)}</td><td class="n">${varTag(varPct(c,d))}</td><td class="n calc">${uu==="PN Iguazú"?"":pn?pct(a/pn,2):"sin dato PN"}</td><td class="n calc">${uu==="PN Iguazú"?"":pnAll()?pct(c/pnA,2):"faltan meses PN"}</td></tr>`;}).join("");
+  $("pg-pasajeros").innerHTML=`
+  <div class="page-head"><div><h2>Pasajeros</h2><p>Evolución histórica por unidad. Los meses del año en curso sin dato cargado se completan solos desde el Diario (marcados con ᵃ en Registros).</p></div>
+    <div class="toolbar"><div class="seg">${["Icebar","Fly Park","PN Iguazú"].map(x=>`<button class="${x==="Icebar"?"bc":x==="Fly Park"?"ar":""} ${u===x?"on":""}" data-u="${x}">${x}</button>`).join("")}</div><button class="btn ghost sm" onclick="openReg('pasajeros')">Editar histórico</button></div></div>
+  <div class="card mix"><h3>Resumen del cierre · ${MESES[m-1]} ${y}</h3>
+    <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>Unidad</th><th class="n">Mes actual</th><th class="n">Mismo mes año ant.</th><th class="n">Var.</th><th class="n">Acum. ene–${MES3[m-1]}</th><th class="n">Acum. año ant.</th><th class="n">Var.</th><th class="n calc">% captación mes</th><th class="n calc">% captación acum.</th></tr></thead><tbody>${resumen}</tbody></table></div>
+    <p class="note" style="margin-top:10px">La captación acumulada solo se calcula cuando están cargados todos los meses del Parque Nacional de enero al mes del cierre (Registros → Pasajeros o la carga diaria del PN en Inicio).</p></div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card span2 ${u==="Icebar"?"bc":u==="Fly Park"?"ar":""}"><div class="split"><h3>${esc(u)} · pasajeros por mes</h3><label class="toolbar" style="font-size:12.5px"><input type="checkbox" id="pxVar" ${PX.var?"checked":""}> Mostrar variación % vs año anterior</label></div>
+      <div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Año</th>${MES3.map((x,k)=>`<th class="n ${k===m-1?"sel":""}">${x}</th>`).join("")}<th class="n calc">Total</th><th class="n calc">Acum. ene–${MES3[m-1]}</th></tr></thead><tbody>
+      ${years.slice().reverse().map(yy=>`<tr ${yy===y?'class="res"':""}><td><b>${yy}</b></td>${MES3.map((_,k)=>{const v=val(yy,k+1);if(PX.var){const b=val(yy-1,k+1);const vp=varPct(v,b);return `<td class="n">${vp===null?'<span class="muted">·</span>':varTag(vp)}</td>`;}return `<td class="n" style="${shade(v)}">${v?num(v):'<span class="muted">·</span>'}</td>`;}).join("")}<td class="n calc"><b>${num(MES3.reduce((a,_,k)=>a+val(yy,k+1),0))}</b></td><td class="n calc">${num(acc(u,yy))}</td></tr>`).join("")}
+      </tbody></table></div></div>
+    <div class="card"><h3>Comparación de años</h3><p class="sub">${y} vs ${y-1} y promedio histórico</p><div class="chart-box lg"><canvas id="chPx"></canvas></div></div>
+  </div>
+  <div class="card mix" style="margin-top:16px"><h3>Captación · % de los visitantes del Parque Nacional que entraron a cada atractivo · ${y}</h3>
+    <div class="tbl-wrap" style="margin-top:8px"><table class="tbl"><thead><tr><th>Unidad</th>${MES3.map((x,k)=>`<th class="n ${k===m-1?"sel":""}">${x}</th>`).join("")}</tr></thead><tbody>
+    <tr><td>Visitantes PN Iguazú</td>${MES3.map((_,k)=>`<td class="n">${num(E.pasajerosMes(S,"PN Iguazú",y,k+1))||"·"}</td>`).join("")}</tr>
+    ${[["Icebar / PN","Icebar","bc"],["Fly Park / PN","Fly Park","ar"]].map(([l,uu,c])=>`<tr class="row-${c}"><td>${l}</td>${MES3.map((_,k)=>{const pn=E.pasajerosMes(S,"PN Iguazú",y,k+1),a=E.pasajerosMes(S,uu,y,k+1);return `<td class="n" style="color:var(--${c}-700);font-weight:650">${pn&&a?pct(a/pn,2):"·"}</td>`;}).join("")}</tr>`).join("")}
+    </tbody></table></div></div>`;
+  $("pg-pasajeros").querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{PX.u=b.dataset.u;render();});
+  $("pxVar").onchange=e=>{PX.var=e.target.checked;render();};
+  const pal=u==="Fly Park"?ARP:u==="Icebar"?BCP:["#334155","#64748b"];
+  const prevYears=years.filter(yy=>yy<y&&MES3.some((_,k)=>val(yy,k+1)));
+  const avg=MES3.map((_,k)=>{const l=prevYears.map(yy=>val(yy,k+1)).filter(v=>v>0);return l.length?l.reduce((a,v)=>a+v,0)/l.length:null;});
+  chart("chPx",{type:"line",data:{labels:MES3,datasets:[{label:String(y),data:MES3.map((_,k)=>val(y,k+1)||null),borderColor:pal[1],backgroundColor:pal[1],tension:.3,borderWidth:3},{label:String(y-1),data:MES3.map((_,k)=>val(y-1,k+1)||null),borderColor:pal[4]||"#94a3b8",backgroundColor:pal[4]||"#94a3b8",tension:.3},{label:"Promedio histórico",data:avg,borderColor:"#94a3b8",borderDash:[5,4],pointRadius:0,tension:.3}]},options:{scales:{y:{grid:{color:"#eef1f6"}},x:{grid:{display:false}}}}});
+};
+
+/* =====================================================================
+   PÁGINA: CONFIGURACIÓN (plan de cuentas, cuentas, unidades, guía, copias)
+   ===================================================================== */
+RENDER.config=function(){
+  const imps=[...new Set(S.plan.map(p=>p.imput))];
+  $("pg-config").innerHTML=`
+  <div class="page-head"><div><h2>Configuración</h2><p>Se completa una vez por año (el TC una vez por mes, en Cambio). Todo el resto del sistema lee de acá.</p></div></div>
+  <div class="card mix"><h3>Cómo se relacionan los datos</h3><p class="sub">Lo que se carga a la izquierda pasa por las reglas del centro y aparece calculado en las páginas de la derecha.</p>
+    <div class="flow">
+      <div class="col"><div class="box in"><b>Diario de ventas</b>ventas, tickets, fotos y cobranzas por día y unidad</div><div class="box in"><b>Gastos</b>cada pago: quién paga, desde qué cuenta, imputación y tipo</div><div class="box in"><b>Saldos al cierre</b>saldo de cada cuenta a fin de mes</div><div class="box in"><b>Pendientes</b>cuentas a pagar y a cobrar</div><div class="box in"><b>PN Iguazú · Pasajeros · Caja Bs As · Cotizaciones</b></div></div>
+      <div class="arrow">→</div>
+      <div class="col"><div class="box cfg"><b>Unidad → Sociedad</b>Icebar, Fotografía, Monki Bar, Otros BC → Bajo Cero · Fly Park, Otros Arboris → Arboris</div><div class="box cfg"><b>Plan de cuentas</b>Imputación / tipo → % que absorbe Bajo Cero (el resto, Arboris)</div><div class="box cfg"><b>TC promedio del mes (Cambio)</b>pasa USD y R$ a pesos en todos los registros</div><div class="box cfg"><b>Cuentas y cajas</b>definen la moneda de cada saldo</div></div>
+      <div class="arrow">→</div>
+      <div class="col"><div class="box out"><b>Inicio</b>saldos, pendientes, cómo viene el mes, pasajeros, fotos, captación PN</div><div class="box out"><b>Estado</b>resumen, reparto por sociedad, medios de pago, análisis por cuenta</div><div class="box out"><b>Resultados</b>resultado mensual, punto de equilibrio, unidades, entre sociedades</div><div class="box out"><b>Pasajeros</b>evolución histórica y captación</div></div>
+    </div>
+    <div class="grid g2" style="margin-top:14px"><div class="note"><b>Cómo se lee el reparto</b><br>• 100% / 0%: el gasto es propio de una sociedad (operativo de cada unidad).<br>• Gastos compartidos (por ej. Expensas): se reparten según el % cargado en el plan de cuentas.<br>• «Paga»: lo absorbe 100% la sociedad que hace el pago (gastos bancarios).<br>• Un gasto puntual que no siga la regla se corrige con «% BC manual».</div>
+      <div class="note green"><b>Lo que no es gasto</b><br>• Entre sociedades: transferencias o préstamos entre BC y Arboris → alimentan la cuenta entre sociedades.<br>• Otras cuentas del grupo: pagos hechos a cuenta de otras empresas o cajas del grupo, a rendir.<br>• Cta. cte. socios: pagos por cuenta de un socio; no entran en el resultado.<br>• Inversiones y mejoras: se restan aparte del resultado.</div></div></div>
+  <div class="grid g3" style="margin-top:16px">
+    <div class="card"><h3>Año del cierre</h3><p class="sub">Todos los cálculos filtran por este año.</p><input class="in num" id="cfYear" type="number" value="${S.year}" style="max-width:140px">
+      <h3 style="margin-top:18px">Unidades de negocio</h3><p class="sub">Cada unidad pertenece a una sociedad.</p>
+      <div class="list">${S.units.map((u,k)=>`<div class="it"><span class="k">${esc(u.unidad)}</span><select class="in" data-unit="${k}" style="max-width:150px">${socOpt().map(s=>`<option ${s===u.soc?"selected":""}>${s}</option>`).join("")}</select></div>`).join("")}</div>
+      <button class="btn ghost sm" id="addUnit" style="margin-top:8px">＋ Unidad</button></div>
+    <div class="card"><h3>Cuentas y cajas</h3><p class="sub">La moneda define cómo se pasa el saldo a USD.</p>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Sociedad</th><th>Cuenta</th><th>Moneda</th><th></th></tr></thead><tbody>
+      ${S.cuentas.map((c,k)=>`<tr class="row-${socCls(c.soc)}"><td>${pillSoc(c.soc)}</td><td>${ctaName(c.cuenta)}</td><td><select class="in" data-cm="${k}" style="width:80px">${["$","USD","R$"].map(x=>`<option ${x===c.moneda?"selected":""}>${x}</option>`).join("")}</select></td><td><button class="btn danger sm" data-cdel="${k}">✕</button></td></tr>`).join("")}</tbody></table></div>
+      <button class="btn ghost sm" id="addCta" style="margin-top:8px">＋ Cuenta</button></div>
+    <div class="card"><h3>Datos y copias de seguridad</h3><p class="sub">Los datos están en la base compartida (Supabase) y solo los ven los usuarios habilitados. Cada guardado queda en el historial de versiones y, si configuraste la copia automática, se guarda una copia diaria en tu Google Drive privado.</p>
+      <div class="toolbar" style="flex-direction:column;align-items:stretch">
+        <button class="btn" id="bkDown">⬇ Descargar copia completa (.json)</button>
+        <button class="btn ghost" id="bkXls">⬇ Exportar todo a Excel</button>
+        ${isAdmin()?'<button class="btn ghost" id="bkImp">⬆ Importar planilla «Cierres Element Park»</button><button class="btn ghost" id="bkUp">⬆ Restaurar desde copia (.json)</button>':'<p class="muted" style="font-size:12.5px">Importar y restaurar está reservado a la administración.</p>'}</div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="split"><div><h3>Plan de cuentas · imputación / tipo y reparto entre sociedades</h3><p class="sub" style="margin:2px 0 0">% Bajo Cero entre 0 y 100, o «Paga». El % Arboris es automático.</p></div><button class="btn ghost sm" id="addPlan">＋ Tipo</button></div>
+    <div class="tbl-wrap tall" style="margin-top:10px"><table class="tbl"><thead><tr><th>Imputación</th><th>Tipo</th><th class="n">% Bajo Cero</th><th class="n calc">% Arboris</th><th class="calc">Clave</th><th class="n calc">Usos</th><th></th></tr></thead><tbody>
+    ${S.plan.map((p,k)=>{const usos=S.gastos.filter(g=>g.imput===p.imput&&g.tipo===p.tipo).length;return `<tr class="${NO_GASTO.includes(p.imput)?"":""}"><td>${esc(p.imput)}</td><td>${esc(p.tipo)}</td><td class="n"><input class="cell" style="width:80px" data-pp="${k}" value="${typeof p.pct==="number"?Math.round(p.pct*1000)/10:esc(p.pct)}"></td><td class="n calc">${typeof p.pct==="number"?Math.round((1-p.pct)*1000)/10+" %":"Paga"}</td><td class="calc muted">${esc(p.imput+" / "+p.tipo)}</td><td class="n calc">${usos}</td><td>${usos?"":`<button class="btn danger sm" data-pdel="${k}">✕</button>`}</td></tr>`;}).join("")}</tbody></table></div></div>
+  ${isAdmin()?`<div class="card mix" style="margin-top:16px" id="usrCard"></div><div class="card" style="margin-top:16px" id="histCard"></div>`:""}`;
+  $("cfYear").onchange=e=>{S.year=Math.round(n(e.target.value))||S.year;$("gYear").textContent=S.year;touch();render();};
+  $("pg-config").querySelectorAll("[data-unit]").forEach(s=>s.onchange=()=>{S.units[+s.dataset.unit].soc=s.value;touch();});
+  $("addUnit").onclick=()=>{const u=prompt("Nombre de la nueva unidad de negocio:");if(!u?.trim())return;const s=prompt("¿Sociedad? Escribí BC o Arboris","BC");S.units.push({unidad:u.trim(),soc:/arb/i.test(s||"")?SOC_AR:SOC_BC});touch();render();};
+  $("pg-config").querySelectorAll("[data-cm]").forEach(s=>s.onchange=()=>{S.cuentas[+s.dataset.cm].moneda=s.value;touch();});
+  $("pg-config").querySelectorAll("[data-cdel]").forEach(b=>b.onclick=()=>{const c=S.cuentas[+b.dataset.cdel];if(S.saldos.some(x=>x.soc===c.soc&&x.cuenta===c.cuenta)&&!confirm("Esta cuenta tiene saldos cargados. ¿Eliminarla igual?"))return;S.cuentas.splice(+b.dataset.cdel,1);touch();render();});
+  $("addCta").onclick=()=>{const s=prompt("¿Sociedad? Escribí BC o Arboris","BC");if(s===null)return;const c=prompt("Nombre de la cuenta / caja:");if(!c?.trim())return;const mo=prompt("Moneda ($, USD o R$):","$");S.cuentas.push({soc:/arb/i.test(s)?SOC_AR:SOC_BC,cuenta:c.trim(),moneda:["$","USD","R$"].includes(mo)?mo:"$"});touch();render();};
+  $("pg-config").querySelectorAll("[data-pp]").forEach(inp=>inp.onchange=()=>{const v=inp.value.trim();S.plan[+inp.dataset.pp].pct=/^paga$/i.test(v)?"Paga":Math.min(1,Math.max(0,n(v)/100));touch();render();});
+  $("pg-config").querySelectorAll("[data-pdel]").forEach(b=>b.onclick=()=>{S.plan.splice(+b.dataset.pdel,1);touch();render();});
+  $("addPlan").onclick=()=>{const i=prompt("Imputación (existente o nueva):\n"+imps.join(" · "));if(!i?.trim())return;const t=prompt("Tipo:");if(!t?.trim())return;if(E.planDe(S,i.trim(),t.trim())){alert("Ya existe.");return;}const p=prompt("% Bajo Cero (0 a 100) o «Paga»:","100");S.plan.push({imput:i.trim(),tipo:t.trim(),pct:/paga/i.test(p||"")?"Paga":Math.min(1,Math.max(0,n(p)/100))});touch();render();};
+  $("bkDown").onclick=()=>download(new Blob([JSON.stringify({app:"Element Park",exportado:new Date().toISOString(),data:S},null,1)],{type:"application/json"}),`element-park_copia_${todayISO()}.json`);
+  $("bkXls").onclick=exportExcel;if($("bkUp"))$("bkUp").onclick=()=>$("fileJson").click();if($("bkImp"))$("bkImp").onclick=()=>$("fileXlsx").click();
+  if(isAdmin()){renderUsuarios();renderHistorial();}
+};
+/* ---------- Usuarios habilitados (solo administración, vía función segura) ---------- */
+async function renderUsuarios(){
+  const box=$("usrCard");if(!box)return;
+  box.innerHTML='<h3>Usuarios habilitados</h3><p class="sub">Cargando…</p>';
+  const {data,error}=await sb.from(CONFIG.USUARIOS).select("email,nombre,rol,activo,creado").order("email");
+  if(error){box.innerHTML=`<h3>Usuarios habilitados</h3><p class="status err">${esc(error.message)}</p>`;return;}
+  box.innerHTML=`<div><h3>Usuarios habilitados</h3><p class="sub" style="margin:2px 0 0">Nadie puede crearse una cuenta propia: solo la administración da de alta usuarios y define o cambia sus contraseñas.</p></div>
+  <div class="grid g3" style="margin-top:12px">
+    <div class="span2"><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th></th></tr></thead><tbody>
+    ${data.map(u=>{const self=u.email.toLowerCase()===user.email.toLowerCase();return `<tr><td>${esc(u.email)}${self?' <span class="pill">vos</span>':""}</td><td>${esc(u.nombre||"")}</td>
+      <td><select class="in" data-urol="${esc(u.email)}" style="width:140px" ${self?"disabled":""}><option value="usuario" ${u.rol==="usuario"?"selected":""}>Usuario</option><option value="admin" ${u.rol==="admin"?"selected":""}>Administración</option></select></td>
+      <td>${u.activo===false?'<span class="pill bad">Bloqueado</span>':'<span class="pill ok">Activo</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-uclave="${esc(u.email)}">Cambiar contraseña</button> ${self?"":`<button class="btn ghost sm" data-uact="${esc(u.email)}" data-v="${u.activo===false?"1":"0"}">${u.activo===false?"Reactivar":"Bloquear"}</button> <button class="btn danger sm" data-udel="${esc(u.email)}">Eliminar</button>`}</td></tr>`;}).join("")}
+    </tbody></table></div><p class="status" id="usrMsg"></p></div>
+    <div><fieldset class="fs"><legend>Dar de alta un usuario</legend>
+      <div class="field"><label>Correo electrónico</label><input class="in" id="nuMail" type="email" autocomplete="off"></div>
+      <div class="field" style="margin-top:8px"><label>Nombre</label><input class="in" id="nuName" autocomplete="off"></div>
+      <div class="field" style="margin-top:8px"><label>Contraseña (mín. 8)</label><input class="in" id="nuPass" type="text" autocomplete="off"><small>Se genera sola; podés cambiarla. Pasásela por un medio privado.</small></div>
+      <div class="field" style="margin-top:8px"><label>Rol</label><select class="in" id="nuRol"><option value="usuario">Usuario (carga y consulta)</option><option value="admin">Administración (además usuarios, historial e importación)</option></select></div>
+      <button class="btn" id="nuSave" style="margin-top:12px;width:100%;justify-content:center">Crear usuario</button>
+      <p class="status" id="nuMsg"></p></fieldset></div></div>`;
+  const msg=(id,t,err)=>{$(id).textContent=t;$(id).className="status "+(err?"err":"ok");};
+  $("nuPass").value=genClave();
+  $("nuSave").onclick=async()=>{
+    const email=$("nuMail").value.trim().toLowerCase(),nombre=$("nuName").value.trim(),password=$("nuPass").value,rol=$("nuRol").value;
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return msg("nuMsg","Escribí un correo válido.",1);
+    if(password.length<8)return msg("nuMsg","La contraseña debe tener al menos 8 caracteres.",1);
+    msg("nuMsg","Creando usuario…");$("nuSave").disabled=true;
+    try{const r=await adminFn({accion:"crear",email,nombre,password,rol});msg("nuMsg",`Usuario ${email} habilitado`+(r.existia?" (ya tenía cuenta: se le asignó esta contraseña).":"."));setTimeout(renderUsuarios,1500);}
+    catch(e){msg("nuMsg",e.message,1);}finally{$("nuSave").disabled=false;}
+  };
+  const act=async(body,ok)=>{msg("usrMsg","Aplicando…");try{await adminFn(body);msg("usrMsg",ok);renderUsuarios();}catch(e){msg("usrMsg",e.message,1);}};
+  box.querySelectorAll("[data-uclave]").forEach(b=>b.onclick=()=>abrirClave(b.dataset.uclave));
+  box.querySelectorAll("[data-urol]").forEach(s=>s.onchange=()=>act({accion:"rol",email:s.dataset.urol,rol:s.value},"Rol actualizado."));
+  box.querySelectorAll("[data-uact]").forEach(b=>b.onclick=()=>act({accion:"bloquear",email:b.dataset.uact,activo:b.dataset.v==="1"},b.dataset.v==="1"?"Usuario reactivado.":"Usuario bloqueado: ya no puede ingresar."));
+  box.querySelectorAll("[data-udel]").forEach(b=>b.onclick=()=>{if(!confirm(`¿Eliminar la cuenta de ${b.dataset.udel}? No podrá volver a entrar. Lo que cargó queda en los datos y en el historial.`))return;act({accion:"eliminar",email:b.dataset.udel},"Cuenta eliminada.");});
+}
+/* ---------- Historial de versiones (solo administración) ---------- */
+async function renderHistorial(){
+  const box=$("histCard");if(!box)return;
+  box.innerHTML='<h3>Historial de versiones</h3><p class="sub">Cargando…</p>';
+  const {data,error}=await sb.from("element_park_historial").select("hist_id,version,guardado_en,guardado_por_email,motivo,tamano").order("hist_id",{ascending:false}).limit(300);
+  if(error){box.innerHTML=`<h3>Historial de versiones</h3><p class="status err">No se pudo leer el historial: ${esc(error.message)}. Revisá que se haya ejecutado el script SQL actualizado.</p>`;return;}
+  box.innerHTML=`<div class="split"><div><h3>Historial de versiones</h3><p class="sub" style="margin:2px 0 0">Supabase guarda una versión cada vez que alguien guarda (los guardados seguidos de una misma persona dentro de 5 minutos se agrupan). Se conservan las últimas 300. Restaurar no borra nada: lo actual también queda en el historial.</p></div><button class="btn ghost sm" id="histRef">↻ Actualizar</button></div>
+  <div class="tbl-wrap tall" style="margin-top:10px"><table class="tbl"><thead><tr><th>Fecha y hora</th><th class="n">Versión</th><th>Quién guardó</th><th>Detalle</th><th class="n">Tamaño</th><th></th></tr></thead><tbody>
+  ${data.map((h,k)=>`<tr ${k===0?'class="res"':""}><td>${esc(new Date(h.guardado_en).toLocaleString("es-AR"))}</td><td class="n">${esc(h.version??"")}</td><td>${esc(h.guardado_por_email||"")}</td><td class="muted">${k===0?'<span class="pill ok">Actual</span> ':""}${esc(h.motivo||"")}</td><td class="n">${num((h.tamano||0)/1024)} KB</td>
+    <td style="white-space:nowrap"><button class="btn ghost sm" data-hdown="${h.hist_id}">Descargar</button> ${k===0?"":`<button class="btn sm" data-hrest="${h.hist_id}">Restaurar</button>`}</td></tr>`).join("")||'<tr><td colspan="6" class="empty">Todavía no hay versiones guardadas.</td></tr>'}
+  </tbody></table></div>`;
+  $("histRef").onclick=renderHistorial;
+  box.querySelectorAll("[data-hdown]").forEach(b=>b.onclick=async()=>{b.disabled=true;const {data:h,error:e}=await sb.from("element_park_historial").select("data,guardado_en").eq("hist_id",+b.dataset.hdown).maybeSingle();b.disabled=false;
+    if(e||!h){alert("No se pudo descargar: "+(e?.message||"sin datos"));return;}
+    download(new Blob([JSON.stringify({app:"Element Park",exportado:h.guardado_en,data:h.data},null,1)],{type:"application/json"}),`element-park_version_${String(h.guardado_en).slice(0,16).replace(/[:T]/g,"-")}.json`);});
+  box.querySelectorAll("[data-hrest]").forEach(b=>b.onclick=async()=>{const h=data.find(x=>String(x.hist_id)===b.dataset.hrest);
+    if(!confirm(`¿Restaurar los datos como estaban el ${new Date(h.guardado_en).toLocaleString("es-AR")}?\n\nLo actual NO se pierde: queda en el historial y podés volver a esa versión.`))return;
+    b.disabled=true;clearTimeout(saveTimer);
+    const {error:e}=await sb.rpc("ep_restaurar",{p_hist_id:+b.dataset.hrest});
+    if(e){alert("No se pudo restaurar: "+e.message);b.disabled=false;return;}
+    alert("Versión restaurada. La página se va a recargar.");location.reload();});
+}
+function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);}
+$("fileJson").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(!f||!isAdmin())return;
+  try{const p=JSON.parse(await f.text());const d=p.data||p;if(!Array.isArray(d.gastos))throw new Error("No es una copia válida.");if(!confirm("¿Reemplazar los datos actuales por esta copia?"))return;S=normalize(d);REV++;scheduleSave();$("gMonth").value=S.month;$("gYear").textContent=S.year;render();alert("Copia restaurada.");}
+  catch(err){alert("No se pudo restaurar: "+err.message);}};
+
+/* =====================================================================
+   IMPORTAR / EXPORTAR EXCEL (mismo diseño que la planilla original)
+   ===================================================================== */
+const DIARIO_COLS={A:"fecha",B:"unidad",D:"detalle",E:"may",F:"men",G:"agMay",H:"agMen",I:"te2040",J:"te41",K:"atMay",L:"atMen",M:"voucher",O:"menFree",P:"liberados",Q:"web",R:"fotosImp",S:"fotosDig",T:"comensales",U:"efe",V:"efeR",W:"efeUSD",X:"tarjeta",Y:"pweb",AA:"difCaja"};
+const GASTOS_COLS={A:"fecha",B:"pedido",C:"paga",D:"cuenta",E:"imput",F:"tipo",G:"detalle",H:"moneda",I:"monto",K:"pctManual"};
+const SALDOS_COLS={A:"fecha",B:"soc",C:"cuenta",E:"saldo"};
+const PEND_COLS={A:"tipo",B:"soc",C:"vto",D:"contraparte",E:"detalle",F:"cat",G:"moneda",H:"monto",J:"estado",K:"fcanc"};
+const DATE_KEYS=["fecha","vto","fcanc"];
+function xcell(ws,a){const c=ws&&ws[a];if(!c)return {v:null,f:null};return {v:c.v??null,f:c.f||null,t:c.t};}
+function xdate(v){if(v===null||v===undefined||v==="")return null;if(typeof v==="number"){const d=XLSX.SSF.parse_date_code(v);return d?`${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`:null;}
+  const s=String(v);const m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;const i=s.match(/^(\d{4}-\d{2}-\d{2})/);return i?i[1]:null;}
+function readRows(ws,cols,start=5){
+  if(!ws)return null;const rng=XLSX.utils.decode_range(ws["!ref"]||"A1");const out=[];
+  for(let r=start;r<=rng.e.r+1;r++){const o={};let any=false;
+    for(const [col,k] of Object.entries(cols)){const c=xcell(ws,col+r);if(c.f&&c.v===null)continue;let v=c.v;if(v===null||v==="")continue;
+      if(DATE_KEYS.includes(k))v=xdate(v);else if(typeof v==="string"&&k!=="detalle"&&k!=="pedido")v=v.trim();
+      if(v!==null&&v!==""){o[k]=v;any=true;}}
+    if(any&&(o.fecha||o.tipo||o.unidad))out.push({id:uid(),...o});}
+  return out;}
+async function importExcelFile(f){
+  if(typeof XLSX==="undefined"){alert("No se pudo cargar el lector de Excel (revisá internet).");return;}
+  const wb=XLSX.read(await f.arrayBuffer(),{type:"array",cellFormula:true,cellDates:false});
+  const sh=name=>wb.Sheets[wb.SheetNames.find(s=>s.trim().toLowerCase()===name.toLowerCase())];
+  const next=JSON.parse(JSON.stringify(S));const done=[];
+  const d=readRows(sh("Diario"),DIARIO_COLS);if(d){next.diario=d;done.push(`Diario: ${d.length}`);}
+  const g=readRows(sh("Gastos"),GASTOS_COLS);if(g){g.forEach(r=>{if(r.monto!==undefined)r.monto=n(r.monto);if(r.pctManual!==undefined)r.pctManual=n(r.pctManual);});next.gastos=g;done.push(`Gastos: ${g.length}`);}
+  const s=readRows(sh("Saldos"),SALDOS_COLS);if(s){next.saldos=s;done.push(`Saldos: ${s.length}`);}
+  const p=readRows(sh("Pendientes"),PEND_COLS);if(p){next.pendientes=p;done.push(`Pendientes: ${p.length}`);}
+  const px=sh("Pasajeros");if(px){const out=[];for(let r=15;r<=400;r++){const u=xcell(px,"A"+r).v,y=xcell(px,"B"+r).v;if(!["Icebar","Fly Park","PN Iguazú"].includes(u)||typeof y!=="number")continue;
+    const m=["C","D","E","F","G","H","I","J","K","L","M","N"].map(c=>{const x=xcell(px,c+r);return x.f||typeof x.v!=="number"?null:x.v;});
+    if(!out.some(o=>o.unidad===u&&o.anio===y))out.push({id:uid(),unidad:u,anio:y,m});}
+    if(out.length){next.pasajeros=out;done.push(`Pasajeros: ${out.length} filas`);}}
+  const cf=sh("Config");if(cf){
+    const y=xcell(cf,"B4").v;if(typeof y==="number")next.year=y;
+    next.tc=[...Array(12)].map((_,i)=>({usd:typeof xcell(cf,"C"+(7+i)).v==="number"?xcell(cf,"C"+(7+i)).v:null,brl:typeof xcell(cf,"D"+(7+i)).v==="number"?xcell(cf,"D"+(7+i)).v:null}));
+    const plan=[];for(let r=31;r<=200;r++){const a=xcell(cf,"A"+r).v,b=xcell(cf,"B"+r).v,c=xcell(cf,"C"+r).v;if(a&&b&&typeof a==="string"&&!/^•|Cómo/.test(a))plan.push({imput:a.trim(),tipo:String(b).trim(),pct:typeof c==="number"?c:"Paga"});}
+    if(plan.length)next.plan=plan;
+    const units=[];for(let r=7;r<=12;r++){const a=xcell(cf,"F"+r).v,b=xcell(cf,"G"+r).v;if(a&&b)units.push({unidad:a,soc:b});}if(units.length)next.units=units;
+    const ctas=[];for(let r=7;r<=40;r++){const a=xcell(cf,"I"+r).v,b=xcell(cf,"J"+r).v,c=xcell(cf,"K"+r).v;if(a&&b&&[SOC_BC,SOC_AR].includes(a))ctas.push({soc:a,cuenta:b,moneda:c||"$"});}if(ctas.length)next.cuentas=ctas;
+    if(xcell(cf,"T6").v==="PUNTO DE EQUILIBRIO"){const row=r=>["U","V","W","X","Y","Z","AA","AB","AC","AD","AE","AF"].map(c=>xcell(cf,c+r).v);next.pe={bc:{precio:row(7),cv:row(8).map(v=>v||0)},ar:{precio:row(9),cv:row(10).map(v=>v||0)}};}
+    done.push("Configuración");}
+  const rb=sh("Resultado BC"),ra=sh("Resultado Arboris");const cols12=["B","C","D","E","F","G","H","I","J","K","L","M"];
+  if(rb&&/precio/i.test(String(xcell(rb,"A61").v)))next.pe.bc={precio:cols12.map(c=>xcell(rb,c+61).v),cv:cols12.map(c=>n(xcell(rb,c+62).v))};
+  if(ra&&/precio/i.test(String(xcell(ra,"A48").v)))next.pe.ar={precio:cols12.map(c=>xcell(ra,c+48).v),cv:cols12.map(c=>n(xcell(ra,c+49).v))};
+  const es=sh("Entre sociedades");if(es&&typeof xcell(es,"B6").v==="number")next.esInicial=xcell(es,"B6").v;
+  const extra=(name,keys)=>{const w=sh(name);if(!w)return;const rows=XLSX.utils.sheet_to_json(w,{defval:null});if(!rows.length)return;next[keys.t]=rows.map(r=>{const o={id:uid()};keys.c.forEach(([h,k])=>{let v=r[h];if(v===null||v===undefined||v==="")return;if(DATE_KEYS.includes(k))v=xdate(v);o[k]=v;});return o;}).filter(o=>o.fecha);done.push(`${name}: ${next[keys.t].length}`);};
+  extra("PN Iguazu diario",{t:"pnDiario",c:[["Fecha","fecha"],["Visitantes PN","pax"],["Nota","nota"]]});
+  extra("Caja Buenos Aires",{t:"cajaBA",c:[["Fecha","fecha"],["Sociedad","soc"],["Tipo","tipo"],["Comprobante","comprobante"],["Proveedor / cliente","contraparte"],["Moneda","moneda"],["Neto","neto"],["Alicuota","alic"],["Detalle","detalle"]]});
+  extra("Cotizaciones",{t:"cotizaciones",c:[["Fecha","fecha"],["Oficial compra","oficialC"],["Oficial venta","oficialV"],["Blue compra","blueC"],["Blue venta","blueV"],["Real compra","brlC"],["Real venta","brlV"],["Fuente","fuente"]]});
+  if(!done.length){alert("No se encontraron las solapas esperadas (Diario, Gastos, Saldos, Pendientes, Pasajeros, Config).");return;}
+  if(!confirm("Se leyó:\n• "+done.join("\n• ")+"\n\n¿Reemplazar esos datos en el sistema?"))return;
+  S=normalize(next);REV++;scheduleSave();$("gMonth").value=S.month;$("gYear").textContent=S.year;render();
+}
+$("fileXlsx").onchange=async e=>{const f=e.target.files?.[0];e.target.value="";if(!f||!isAdmin())return;try{await importExcelFile(f);}catch(err){console.error(err);alert("Error al importar: "+(err.message||err));}};
+function exportExcel(){
+  if(typeof XLSX==="undefined"){alert("No se pudo cargar la librería de Excel (revisá internet).");return;}
+  const wb=XLSX.utils.book_new();
+  const put=(name,title,head,rows,startRow=4)=>{const aoa=[[title],["Exportado desde Element Park · celdas calculadas = valores"],[],...Array(startRow-4).fill([]),head,...rows];const ws=XLSX.utils.aoa_to_sheet(aoa);XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));return ws;};
+  const toCols=(map,r,calc)=>{const letters=Object.keys({...map,...calc});const max=Math.max(...letters.map(l=>XLSX.utils.decode_col(l)));const row=Array(max+1).fill(null);
+    Object.entries(map).forEach(([l,k])=>{let v=r[k];if(DATE_KEYS.includes(k)&&v){const d=parseD(v);v=d?new Date(Date.UTC(d.y,d.m-1,d.d)):v;}row[XLSX.utils.decode_col(l)]=v??null;});Object.entries(calc||{}).forEach(([l,v])=>row[XLSX.utils.decode_col(l)]=v);return row;};
+  const hdr=(map,calc,labels)=>{const all={...map,...calc};const max=Math.max(...Object.keys(all).map(l=>XLSX.utils.decode_col(l)));const row=Array(max+1).fill(null);Object.keys(all).forEach(l=>row[XLSX.utils.decode_col(l)]=labels[l]||l);return row;};
+  const DL={A:"Fecha",B:"Unidad",C:"Sociedad",D:"Detalle",E:"May",F:"Men",G:"Agencia May",H:"Agencia Men",I:"Tarifa esp. 20-40",J:"Tarifa esp. +41",K:"Atractivo May",L:"Atractivo Men",M:"Voucher",N:"TOTAL TICKETS",O:"Men free",P:"Liberados",Q:"Tickets web (cant.)",R:"Fotos impresas",S:"Fotos digitales",T:"Comensales",U:"Efectivo $",V:"Efectivo R$",W:"Efectivo USD",X:"Tarjeta $",Y:"Página web $",Z:"TOTAL INGRESOS $",AA:"Dif. caja $",AB:"Mes",AC:"Año"};
+  put("Diario","DIARIO DE VENTAS — una fila por día y por unidad",hdr(DIARIO_COLS,{C:1,N:1,Z:1,AB:1,AC:1},DL),S.diario.map(r=>{const c=E.diario(S,r);return toCols(DIARIO_COLS,r,{C:c.soc,N:c.tickets,Z:c.ingresos,AB:c.mes,AC:c.anio});}));
+  const GL={A:"Fecha",B:"Nº pedido (WhatsApp)",C:"Paga",D:"Cuenta / caja",E:"Imputación",F:"Tipo",G:"Proveedor / detalle",H:"Moneda",I:"Monto",J:"Monto en $",K:"% BC manual (opcional)",L:"% Bajo Cero aplicado",M:"Importe BAJO CERO $",N:"Importe ARBORIS $",O:"Mes",P:"Año",Q:"Control"};
+  put("Gastos","GASTOS — una fila por pago",hdr(GASTOS_COLS,{J:1,L:1,M:1,N:1,O:1,P:1,Q:1},GL),S.gastos.map(r=>{const c=E.gasto(S,r);return toCols(GASTOS_COLS,r,{J:c.ars,L:c.pct,M:c.bc,N:c.ar,O:c.mes,P:c.anio,Q:c.control});}));
+  put("Saldos","SALDOS AL CIERRE",hdr(SALDOS_COLS,{D:1,F:1,G:1},{A:"Fecha de cierre",B:"Sociedad",C:"Cuenta / caja",D:"Moneda",E:"Saldo",F:"Saldo en USD",G:"Mes"}),S.saldos.map(r=>{const c=E.saldo(S,r);return toCols(SALDOS_COLS,r,{D:c.moneda,F:c.usd,G:c.mes});}));
+  put("Pendientes","CUENTAS A PAGAR Y A COBRAR",hdr(PEND_COLS,{I:1},{A:"Tipo",B:"Sociedad",C:"Fecha vto.",D:"Contraparte",E:"Detalle",F:"Categoría",G:"Moneda",H:"Monto",I:"Monto en $",J:"Estado",K:"Fecha cancelación"}),S.pendientes.map(r=>toCols(PEND_COLS,r,{I:E.pendiente(S,r).ars})));
+  const pxRows=[...S.pasajeros].sort((a,b)=>a.unidad.localeCompare(b.unidad)||a.anio-b.anio).map(p=>[p.unidad,p.anio,...MESES.map((_,i)=>E.pasajerosMes(S,p.unidad,p.anio,i+1)||null),MESES.reduce((a,_,i)=>a+E.pasajerosMes(S,p.unidad,p.anio,i+1),0)]);
+  put("Pasajeros","EVOLUCIÓN DE PASAJEROS",["Unidad","Año",...MES3,"Total"],pxRows,14);
+  const cfg=[["CONFIGURACIÓN"],["Exportado desde Element Park"],[],["Año del cierre",S.year],[],[],["Mes","Nombre","TC USD (promedio del mes)","TC R$ (promedio del mes)",null,"Unidad","Sociedad",null,"Sociedad","Cuenta","Moneda"]];
+  for(let i=0;i<Math.max(12,S.cuentas.length,S.units.length);i++){const r=[];if(i<12)r.push(i+1,MESES[i],S.tc[i]?.usd??null,S.tc[i]?.brl??null);else r.push(null,null,null,null);r.push(null,S.units[i]?.unidad??null,S.units[i]?.soc??null,null,S.cuentas[i]?.soc??null,S.cuentas[i]?.cuenta??null,S.cuentas[i]?.moneda??null);cfg.push(r);}
+  while(cfg.length<29)cfg.push([]);cfg.push(["Imputación","Tipo","% Bajo Cero","% Arboris"]);S.plan.forEach(p=>cfg.push([p.imput,p.tipo,p.pct,typeof p.pct==="number"?1-p.pct:"Paga"]));
+  const wsC=XLSX.utils.aoa_to_sheet(cfg);
+  XLSX.utils.sheet_add_aoa(wsC,[["PUNTO DE EQUILIBRIO",...MES3],["BC precio",...S.pe.bc.precio],["BC costo variable",...S.pe.bc.cv],["Arboris precio",...S.pe.ar.precio],["Arboris costo variable",...S.pe.ar.cv]],{origin:"T6"});
+  XLSX.utils.book_append_sheet(wb,wsC,"Config");
+  [[SOC_BC,"Resultado BC"],[SOC_AR,"Resultado Arboris"]].forEach(([soc,name])=>{const R=RES(soc);const aoa=[["RESULTADO DE GESTIÓN — "+soc.toUpperCase()+" S.R.L."],[],["Concepto",...MESES,"Año"]];R.rows.forEach(r=>aoa.push([(r.kind==="sub"?"   ":"")+r.label,...(r.vals||[]),r.vals?(r.kind==="acc"||r.kind==="accusd"?r.vals[11]:r.kind==="tc"?null:r.vals.reduce((a,x)=>a+x,0)):null]));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),name);});
+  const es=ES();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([["CUENTA ENTRE SOCIEDADES"],[],["Concepto",...MESES],[],[],["Saldo inicial del año (en $)",n(S.esInicial)],[],["(+) Gastos pagados por BC que le corresponden a Arboris",...es.a],["(−) Gastos pagados por Arboris que le corresponden a BC",...es.b],["(+) Transferencias de BC a Arboris",...es.c],["(−) Transferencias de Arboris a BC",...es.d],["Movimiento neto",...es.neto],[],["Saldo al cierre",...es.saldo],["Quién le debe a quién",...es.quien]]),"Entre sociedades");
+  const simple=(name,head,rows)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([head,...rows]),name);
+  simple("PN Iguazu diario",["Fecha","Visitantes PN","Nota"],S.pnDiario.map(r=>[r.fecha,r.pax,r.nota||null]));
+  simple("Caja Buenos Aires",["Fecha","Sociedad","Tipo","Comprobante","Proveedor / cliente","Moneda","Neto","Alicuota","IVA","Total","Total $","Detalle"],S.cajaBA.map(r=>{const c=calcBA(r);return [r.fecha,r.soc,r.tipo,r.comprobante||null,r.contraparte||null,r.moneda,n(r.neto),r.alic??null,c.iva,c.total,c.ars,r.detalle||null];}));
+  simple("Cotizaciones",["Fecha","Oficial compra","Oficial venta","Blue compra","Blue venta","Real compra","Real venta","Fuente"],S.cotizaciones.map(r=>[r.fecha,r.oficialC??null,r.oficialV??null,r.blueC??null,r.blueV??null,r.brlC??null,r.brlV??null,r.fuente||null]));
+  XLSX.writeFile(wb,`Cierres_Element_Park_${S.year}_${todayISO()}.xlsx`);
+}
+
+boot();
+</script>
+</body>
+</html>
