@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Element Park · Control de cierres</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com; connect-src 'self' https://api.bcra.gob.ar https://dolarapi.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com; connect-src 'self' https://api.bcra.gob.ar https://api.argentinadatos.com https://dolarapi.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <style>
@@ -50,6 +50,7 @@ main{max-width:1500px;margin:auto;padding:22px}
 .page-head p{margin:4px 0 0;color:var(--muted);max-width:760px}
 .grid{display:grid;gap:16px}
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(3,minmax(0,1fr))}.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g5{grid-template-columns:repeat(5,minmax(0,1fr))}@media(max-width:1300px){.g5{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:760px){.g5{grid-template-columns:1fr}}
 .g-auto{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
 .span2{grid-column:span 2}.span-all{grid-column:1/-1}
 @media(max-width:1100px){.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -67,6 +68,7 @@ main{max-width:1500px;margin:auto;padding:22px}
 .kpi .l{font-size:12px;color:var(--muted);font-weight:600;display:flex;justify-content:space-between;gap:6px}
 .kpi .v{font-size:23px;font-weight:750;letter-spacing:-.5px;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .kpi .d{font-size:12px;margin-top:3px;color:var(--muted)}
+.kpi .l .pill{align-self:flex-start;flex-shrink:0}
 .kpi.bc{background:linear-gradient(160deg,var(--bc-50),#fff 70%);border-color:#d5e5ff}.kpi.bc .v{color:var(--bc-900)}
 .kpi.ar{background:linear-gradient(160deg,var(--ar-50),#fff 70%);border-color:#cdeedb}.kpi.ar .v{color:var(--ar-900)}
 .kpi.dark{background:linear-gradient(135deg,#132544,#123a35);color:#fff;border:0}.kpi.dark .l,.kpi.dark .d{color:#c9d6ea}
@@ -626,13 +628,23 @@ async function bcraSerie(mon,desde,hasta){
       throw new Error("No se pudo consultar al BCRA desde el navegador ni desde el servidor ("+m+"). Revisá que la función «ep-cotizaciones» esté desplegada.");}
     return {serie:parseBcra(data,mon),via:"BCRA (vía servidor)"};}
 }
+async function blueSerie(desde,hasta){
+  const filtra=a=>(a||[]).map(x=>({fecha:String(x.fecha||"").slice(0,10),valor:n(x.venta)})).filter(x=>x.fecha>=desde&&x.fecha<=hasta&&x.valor>0).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  try{const r=await fetch("https://api.argentinadatos.com/v1/cotizaciones/dolares/blue",{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);return {serie:filtra(await r.json()),via:"ArgentinaDatos"};}
+  catch(e){
+    try{if(!sb)throw e;const {data,error}=await sb.functions.invoke("ep-cotizaciones",{body:{moneda:"BLUE",desde,hasta}});if(error||data?.error)throw new Error(data?.error||error.message);
+      return {serie:parseBcra(data,"BLUE"),via:"ArgentinaDatos (vía servidor)"};}
+    catch(e2){const reg=(S.cotizaciones||[]).filter(r=>r.fecha>=desde&&r.fecha<=hasta&&n(r.blueV)).map(r=>({fecha:r.fecha,valor:n(r.blueV)})).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+      return {serie:reg,via:"cotizaciones registradas en Cambio",parcialFuente:true};}}
+}
 async function cargarFxMes(y,m){
   const key=y+"-"+m;FXM.cache[key]={st:"loading"};
   const desde=`${y}-${String(m).padStart(2,"0")}-01`,fin=`${y}-${String(m).padStart(2,"0")}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`;
   const hoy=todayISO(),hasta=fin<hoy?fin:hoy;
   try{
-    if(desde>hoy)FXM.cache[key]={st:"ok",usd:[],brl:[],via:"BCRA",futuro:true};
-    else{const [u,r]=await Promise.all([bcraSerie("USD",desde,hasta),bcraSerie("BRL",desde,hasta)]);FXM.cache[key]={st:"ok",usd:u.serie,brl:r.serie,via:u.via,parcial:hasta<fin};}
+    if(desde>hoy)FXM.cache[key]={st:"ok",usd:[],brl:[],blue:[],via:"BCRA",futuro:true};
+    else{const [u,r,bl]=await Promise.all([bcraSerie("USD",desde,hasta),bcraSerie("BRL",desde,hasta),blueSerie(desde,hasta).catch(()=>({serie:[],via:"sin datos"}))]);
+      FXM.cache[key]={st:"ok",usd:u.serie,brl:r.serie,blue:bl.serie,blueVia:bl.via,blueParcial:!!bl.parcialFuente,via:u.via,parcial:hasta<fin};}
   }catch(e){FXM.cache[key]={st:"err",err:e.message||String(e)};}
   if(PAGE==="inicio"&&MON()===m&&YR()===y)renderFxInicio();
 }
@@ -648,28 +660,30 @@ function renderFxInicio(){
   if(!c)cargarFxMes(y,m);
   if(FXM.blueSt==="idle")cargarBlue();
   const st=a=>{if(!a||!a.length)return null;const v=a.map(x=>x.valor);return {avg:v.reduce((s,x)=>s+x,0)/v.length,min:Math.min(...v),max:Math.max(...v),n:v.length,last:a[a.length-1]};};
-  const U=c?.st==="ok"?st(c.usd):null,B=c?.st==="ok"?st(c.brl):null;
+  const U=c?.st==="ok"?st(c.usd):null,B=c?.st==="ok"?st(c.brl):null,BL=c?.st==="ok"?st(c.blue):null;
   const bl=FXM.blue,tcU=E.tcUsd(S,m),tcB=E.tcBrl(S,m);
   const cargando='<div class="v" style="font-size:16px;color:var(--muted)">Consultando…</div>';
   const sinDato=c?.futuro?"El mes todavía no empezó.":"El BCRA no publicó cotizaciones en este período.";
   const usdBox=!c||c.st==="loading"?cargando:c.st==="err"?`<div class="d status err">${esc(c.err)}</div>`:U?`<div class="v">${fx2(U.avg)}</div><div class="d">${U.n} días hábiles${c.parcial?" (hasta hoy)":""} · mín ${fx2(U.min)} · máx ${fx2(U.max)}</div><div class="d">Último: ${fx2(U.last.valor)} (${fd(U.last.fecha)})</div>`:`<div class="d">${sinDato}</div>`;
   const brlBox=!c||c.st==="loading"?cargando:c.st==="err"?`<div class="d status err">No disponible</div>`:B?`<div class="v">${fx2(B.avg)}</div><div class="d">Pesos por cada real · ${B.n} días hábiles</div><div class="d">Último: ${fx2(B.last.valor)} (${fd(B.last.fecha)})</div>`:`<div class="d">${sinDato}</div>`;
   const brecha=bl&&U?n(bl.venta)/U.last.valor-1:null;
+  const blueAvgBox=!c||c.st==="loading"?cargando:c.st==="err"?`<div class="d status err">No disponible</div>`:BL?`<div class="v">${fx2(BL.avg)}</div><div class="d">Venta · ${BL.n} días${c.parcial?" (hasta hoy)":""} · mín ${fx2(BL.min)} · máx ${fx2(BL.max)}</div><div class="d">Brecha promedio con el oficial: <b>${U?pct(BL.avg/U.avg-1):"—"}</b>${c.blueParcial?" · <span title=\"Solo los días en que se abrió la página Cambio\">parcial</span>":""}</div>`:`<div class="d">Sin datos del blue para este período.</div>`;
   const blueBox=FXM.blueSt==="loading"||FXM.blueSt==="idle"?cargando:FXM.blueSt==="err"?`<div class="d status err">No se pudo consultar (${esc(FXM.blueErr)})</div>`:`<div class="v">${fx2(n(bl.venta))}</div><div class="d">Venta · compra ${fx2(n(bl.compra))}</div><div class="d">Brecha con el oficial: <b>${brecha===null?"—":pct(brecha)}</b></div>`;
   const dif=(a,b)=>a&&b?varTag(a/b-1,true):"—";
-  box.innerHTML=`<div class="split"><div><h3>Tipo de cambio · ${MESES[m-1]} ${y}</h3><p class="sub" style="margin:2px 0 0">Valores en pesos argentinos. Dólar y real: <b>Banco Central (BCRA)</b>, cotización de referencia publicada para cada día hábil. Dólar blue: no tiene fuente oficial (es un mercado informal); se toma de dolarapi.com al abrir la página.</p></div>
+  box.innerHTML=`<div class="split"><div><h3>Tipo de cambio · ${MESES[m-1]} ${y}</h3><p class="sub" style="margin:2px 0 0">Valores en pesos argentinos. Dólar y real: <b>Banco Central (BCRA)</b>, cotización de referencia publicada para cada día hábil. Dólar blue: no tiene fuente oficial (es un mercado informal); el del día se toma de dolarapi.com al abrir la página y el promedio del mes, del histórico diario de ArgentinaDatos.</p></div>
     <button class="btn ghost sm" id="fxReload">↻ Actualizar</button></div>
-  <div class="grid g4" style="margin-top:12px">
+  <div class="grid g5" style="margin-top:12px">
     <div class="kpi bc"><div class="l"><span>Dólar oficial · promedio del mes</span><span class="pill">BCRA</span></div>${usdBox}</div>
+    <div class="kpi"><div class="l"><span>Dólar blue · promedio del mes</span><span class="pill">informal</span></div>${blueAvgBox}</div>
     <div class="kpi"><div class="l"><span>Dólar blue · hoy ${fd(todayISO()).slice(0,5)}</span><span class="pill">informal</span></div>${blueBox}</div>
     <div class="kpi ar"><div class="l"><span>Real · promedio del mes</span><span class="pill">BCRA</span></div>${brlBox}</div>
     <div class="kpi dark"><div class="l"><span>TC que usa el cierre de ${MES3[m-1]}</span></div><div class="v" style="font-size:19px">US$ ${tcU?nf2.format(tcU):"—"} · R$ ${tcB?nf2.format(tcB):"—"}</div>
       <div class="d">vs promedio BCRA: dólar ${dif(tcU,U?.avg)} · real ${dif(tcB,B?.avg)}</div>
       ${U||B?`<button class="btn sm" id="fxUse" style="margin-top:8px;background:#fff;color:var(--ink)">Usar promedios BCRA en el cierre</button>`:""}</div>
   </div>
-  ${U||B?`<details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Ver cotizaciones diarias del BCRA (${c.via})</summary>
-    <div class="tbl-wrap" style="margin-top:8px;max-height:260px"><table class="tbl"><thead><tr><th>Fecha</th><th class="n">Dólar (A 3500)</th><th class="n">Real</th></tr></thead><tbody>
-    ${[...new Set([...c.usd,...c.brl].map(x=>x.fecha))].sort().reverse().map(f=>`<tr><td>${fd(f)}</td><td class="n">${fx2(c.usd.find(x=>x.fecha===f)?.valor)}</td><td class="n">${fx2(c.brl.find(x=>x.fecha===f)?.valor)}</td></tr>`).join("")}
+  ${U||B?`<details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Ver cotizaciones diarias (dólar y real: ${c.via} · blue: ${c.blueVia})</summary>
+    <div class="tbl-wrap" style="margin-top:8px;max-height:260px"><table class="tbl"><thead><tr><th>Fecha</th><th class="n">Dólar (A 3500)</th><th class="n">Dólar blue (venta)</th><th class="n">Real</th></tr></thead><tbody>
+    ${[...new Set([...c.usd,...c.brl,...c.blue].map(x=>x.fecha))].sort().reverse().map(f=>`<tr><td>${fd(f)}</td><td class="n">${fx2(c.usd.find(x=>x.fecha===f)?.valor)}</td><td class="n">${fx2(c.blue.find(x=>x.fecha===f)?.valor)}</td><td class="n">${fx2(c.brl.find(x=>x.fecha===f)?.valor)}</td></tr>`).join("")}
     </tbody></table></div></details>`:""}`;
   $("fxReload").onclick=()=>{delete FXM.cache[key];FXM.blueSt="idle";renderFxInicio();};
   if($("fxUse"))$("fxUse").onclick=()=>{
