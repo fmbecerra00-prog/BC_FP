@@ -246,8 +246,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
    Los datos NO están dentro de este archivo: viven en Supabase, protegidos por RLS.
    ===================================================================== */
 const CONFIG={
-  SUPABASE_URL:"https://bfponlporffohnsuvnmi.supabase.co",      // ej. "https://xxxxxxxx.supabase.co"
-  SUPABASE_KEY:"sb_publishable_SGXBW8sMTrH_yFfS8ujy-Q_rN39gGJ3",      // clave pública anon / publishable (nunca la service_role)
+  SUPABASE_URL:"",      // ej. "https://xxxxxxxx.supabase.co"
+  SUPABASE_KEY:"",      // clave pública anon / publishable (nunca la service_role)
   TABLA:"element_park_state",
   USUARIOS:"ep_usuarios"
 };
@@ -454,8 +454,8 @@ async function enter(u){
   user=u;
   // 1) ¿El correo está en la lista de usuarios habilitados? (RLS: solo un habilitado puede leer la lista)
   const {data:me,error:e1}=await sb.from(CONFIG.USUARIOS).select("email,nombre,rol,activo").eq("email",String(u.email||"").toLowerCase()).maybeSingle();
-  if(e1||!me||me.activo===false){await sb.auth.signOut().catch(()=>{});user=null;
-    showGate(e1&&!/0 rows/i.test(e1.message)?"No se pudo verificar el usuario: "+e1.message:`Usuario no registrado. El correo ${u.email} no está habilitado para acceder a esta página.`);return;}
+  if(e1||!me||me.activo===false){user=null;await sb.auth.signOut().catch(()=>{});
+    showGate(e1&&!/0 rows/i.test(e1.message)?"No se pudo verificar el usuario: "+e1.message+" (¿se ejecutó el script SQL en este proyecto?)":`Usuario no registrado. La contraseña es correcta, pero el correo ${u.email} no está en la lista de usuarios habilitados (tabla ep_usuarios).`);return;}
   ROL=me.rol;
   // 2) Datos (también protegidos por RLS)
   const {data,error}=await sb.from(CONFIG.TABLA).select("data,version").eq("id",1).maybeSingle();
