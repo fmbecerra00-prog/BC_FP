@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Element Park · Control de cierres</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com; connect-src 'self' https://dolarapi.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.sheetjs.com; connect-src 'self' https://api.bcra.gob.ar https://dolarapi.com https://*.supabase.co wss://*.supabase.co; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <style>
@@ -58,8 +58,8 @@ main{max-width:1500px;margin:auto;padding:22px}
 .card h3{margin:0 0 4px;font-size:15.5px;letter-spacing:-.1px;display:flex;align-items:center;gap:8px}
 .card .sub{color:var(--muted);font-size:12.5px;margin:0 0 12px}
 .card.bc{border-top:4px solid var(--bc-600)}.card.ar{border-top:4px solid var(--ar-600)}
-.card.mix{border-top:4px solid transparent;border-image:linear-gradient(90deg,var(--bc-600),var(--ar-600)) 1;border-image-slice:1}
-.card.mix{border-radius:0 0 var(--radius) var(--radius)}
+.card.mix{padding-top:22px}
+.card.mix::before{content:"";position:absolute;left:-1px;right:-1px;top:-1px;height:5px;border-radius:var(--radius) var(--radius) 0 0;background:linear-gradient(90deg,var(--bc-600),var(--bc-500) 45%,var(--ar-500) 55%,var(--ar-600))}
 .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 9px;border-radius:999px}
 .tag.bc{background:var(--bc-100);color:var(--bc-700)}.tag.ar{background:var(--ar-100);color:var(--ar-700)}
 .tag.gray{background:#eef1f6;color:#4b5a70}.tag.warn{background:#fff3e0;color:#9a4b00}.tag.bad{background:#fde8e1;color:#a3330b}.tag.ok{background:#dcf5e6;color:#11602f}
@@ -572,6 +572,7 @@ RENDER.inicio=function(){
     <div class="kpi dark"><div class="l"><span>Resultado del mes · Element Park</span></div><div class="v">${money(resTot)}</div><div class="d">BC ${money(bc.res[i])} · Arboris ${money(ar.res[i])}</div></div>
     <div class="kpi dark"><div class="l"><span>Total en cajas (USD)</span></div><div class="v">${usd(totU(cBC)+totU(cAR))}</div><div class="d">${mSal?"Cierre de "+MESES[mSal-1]:"Sin saldos cargados"}</div></div>
   </div>
+  <div class="card mix" style="margin-top:16px" id="fxCard"></div>
   <div class="grid g2" style="margin-top:16px">${cajaCard(SOC_BC,cBC,"bc")}${cajaCard(SOC_AR,cAR,"ar")}</div>
   <div class="grid g3" style="margin-top:16px">
     <div class="card mix span2"><h3>Cómo viene el mes</h3><p class="sub">Ingresos del Diario menos gastos imputados a cada sociedad (según el plan de cuentas). Las inversiones no son gasto: se restan aparte para llegar al saldo.</p>
@@ -605,7 +606,76 @@ RENDER.inicio=function(){
     {label:"Gastos Arboris",data:ar.totG.slice(0,m).map(v=>-v),backgroundColor:ARP[5],stack:"ar"}]},
     options:{scales:{y:axisMoney,x:{grid:{display:false}}},plugins:{tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${money(Math.abs(c.parsed.y))}`}},legend:{position:"bottom",labels:{boxWidth:10}}}}});
   renderPN();
+  renderFxInicio();
 };
+/* ---------- Tipo de cambio del mes (Inicio) ----------
+   Dólar y real: API oficial del BCRA (Estadísticas Cambiarias v1.0).
+   tipoCotizacion = pesos por unidad de moneda (dólar: referencia Com. A 3500).
+   Blue: no existe fuente oficial (mercado informal) → dolarapi.com. */
+const FXM={cache:{},blue:null,blueSt:"idle",blueErr:""};
+const BCRA_API="https://api.bcra.gob.ar/estadisticascambiarias/v1.0/Cotizaciones/";
+const fx2=v=>v?"$ "+nf2.format(v):"—";
+function parseBcra(j,mon){return (j?.results||[]).map(r=>{const d=(r.detalle||[]).find(x=>x.codigoMoneda===mon)||(r.detalle||[])[0];return {fecha:String(r.fecha||"").slice(0,10),valor:n(d?.tipoCotizacion)};}).filter(x=>x.fecha&&x.valor>0).sort((a,b)=>a.fecha.localeCompare(b.fecha));}
+async function bcraSerie(mon,desde,hasta){
+  try{const r=await fetch(`${BCRA_API}${mon}?fechadesde=${desde}&fechahasta=${hasta}&limit=1000`,{cache:"no-store"});
+    if(!r.ok)throw new Error("HTTP "+r.status);return {serie:parseBcra(await r.json(),mon),via:"BCRA"};}
+  catch(e){
+    if(!sb)throw e;
+    const {data,error}=await sb.functions.invoke("ep-cotizaciones",{body:{moneda:mon,desde,hasta}});
+    if(error||data?.error){let m=data?.error||error.message;try{const j=await error.context.json();m=j.error||m;}catch(_){}
+      throw new Error("No se pudo consultar al BCRA desde el navegador ni desde el servidor ("+m+"). Revisá que la función «ep-cotizaciones» esté desplegada.");}
+    return {serie:parseBcra(data,mon),via:"BCRA (vía servidor)"};}
+}
+async function cargarFxMes(y,m){
+  const key=y+"-"+m;FXM.cache[key]={st:"loading"};
+  const desde=`${y}-${String(m).padStart(2,"0")}-01`,fin=`${y}-${String(m).padStart(2,"0")}-${String(new Date(y,m,0).getDate()).padStart(2,"0")}`;
+  const hoy=todayISO(),hasta=fin<hoy?fin:hoy;
+  try{
+    if(desde>hoy)FXM.cache[key]={st:"ok",usd:[],brl:[],via:"BCRA",futuro:true};
+    else{const [u,r]=await Promise.all([bcraSerie("USD",desde,hasta),bcraSerie("BRL",desde,hasta)]);FXM.cache[key]={st:"ok",usd:u.serie,brl:r.serie,via:u.via,parcial:hasta<fin};}
+  }catch(e){FXM.cache[key]={st:"err",err:e.message||String(e)};}
+  if(PAGE==="inicio"&&MON()===m&&YR()===y)renderFxInicio();
+}
+async function cargarBlue(){
+  FXM.blueSt="loading";
+  try{const r=await fetch("https://dolarapi.com/v1/dolares/blue",{cache:"no-store"});if(!r.ok)throw new Error("HTTP "+r.status);FXM.blue=await r.json();FXM.blueSt="ok";}
+  catch(e){FXM.blueSt="err";FXM.blueErr=e.message||String(e);}
+  if(PAGE==="inicio")renderFxInicio();
+}
+function renderFxInicio(){
+  const box=$("fxCard");if(!box)return;
+  const y=YR(),m=MON(),key=y+"-"+m,c=FXM.cache[key];
+  if(!c)cargarFxMes(y,m);
+  if(FXM.blueSt==="idle")cargarBlue();
+  const st=a=>{if(!a||!a.length)return null;const v=a.map(x=>x.valor);return {avg:v.reduce((s,x)=>s+x,0)/v.length,min:Math.min(...v),max:Math.max(...v),n:v.length,last:a[a.length-1]};};
+  const U=c?.st==="ok"?st(c.usd):null,B=c?.st==="ok"?st(c.brl):null;
+  const bl=FXM.blue,tcU=E.tcUsd(S,m),tcB=E.tcBrl(S,m);
+  const cargando='<div class="v" style="font-size:16px;color:var(--muted)">Consultando…</div>';
+  const sinDato=c?.futuro?"El mes todavía no empezó.":"El BCRA no publicó cotizaciones en este período.";
+  const usdBox=!c||c.st==="loading"?cargando:c.st==="err"?`<div class="d status err">${esc(c.err)}</div>`:U?`<div class="v">${fx2(U.avg)}</div><div class="d">${U.n} días hábiles${c.parcial?" (hasta hoy)":""} · mín ${fx2(U.min)} · máx ${fx2(U.max)}</div><div class="d">Último: ${fx2(U.last.valor)} (${fd(U.last.fecha)})</div>`:`<div class="d">${sinDato}</div>`;
+  const brlBox=!c||c.st==="loading"?cargando:c.st==="err"?`<div class="d status err">No disponible</div>`:B?`<div class="v">${fx2(B.avg)}</div><div class="d">Pesos por cada real · ${B.n} días hábiles</div><div class="d">Último: ${fx2(B.last.valor)} (${fd(B.last.fecha)})</div>`:`<div class="d">${sinDato}</div>`;
+  const brecha=bl&&U?n(bl.venta)/U.last.valor-1:null;
+  const blueBox=FXM.blueSt==="loading"||FXM.blueSt==="idle"?cargando:FXM.blueSt==="err"?`<div class="d status err">No se pudo consultar (${esc(FXM.blueErr)})</div>`:`<div class="v">${fx2(n(bl.venta))}</div><div class="d">Venta · compra ${fx2(n(bl.compra))}</div><div class="d">Brecha con el oficial: <b>${brecha===null?"—":pct(brecha)}</b></div>`;
+  const dif=(a,b)=>a&&b?varTag(a/b-1,true):"—";
+  box.innerHTML=`<div class="split"><div><h3>Tipo de cambio · ${MESES[m-1]} ${y}</h3><p class="sub" style="margin:2px 0 0">Valores en pesos argentinos. Dólar y real: <b>Banco Central (BCRA)</b>, cotización de referencia publicada para cada día hábil. Dólar blue: no tiene fuente oficial (es un mercado informal); se toma de dolarapi.com al abrir la página.</p></div>
+    <button class="btn ghost sm" id="fxReload">↻ Actualizar</button></div>
+  <div class="grid g4" style="margin-top:12px">
+    <div class="kpi bc"><div class="l"><span>Dólar oficial · promedio del mes</span><span class="pill">BCRA</span></div>${usdBox}</div>
+    <div class="kpi"><div class="l"><span>Dólar blue · hoy ${fd(todayISO()).slice(0,5)}</span><span class="pill">informal</span></div>${blueBox}</div>
+    <div class="kpi ar"><div class="l"><span>Real · promedio del mes</span><span class="pill">BCRA</span></div>${brlBox}</div>
+    <div class="kpi dark"><div class="l"><span>TC que usa el cierre de ${MES3[m-1]}</span></div><div class="v" style="font-size:19px">US$ ${tcU?nf2.format(tcU):"—"} · R$ ${tcB?nf2.format(tcB):"—"}</div>
+      <div class="d">vs promedio BCRA: dólar ${dif(tcU,U?.avg)} · real ${dif(tcB,B?.avg)}</div>
+      ${U||B?`<button class="btn sm" id="fxUse" style="margin-top:8px;background:#fff;color:var(--ink)">Usar promedios BCRA en el cierre</button>`:""}</div>
+  </div>
+  ${U||B?`<details style="margin-top:10px"><summary class="muted" style="cursor:pointer;font-size:12.5px">Ver cotizaciones diarias del BCRA (${c.via})</summary>
+    <div class="tbl-wrap" style="margin-top:8px;max-height:260px"><table class="tbl"><thead><tr><th>Fecha</th><th class="n">Dólar (A 3500)</th><th class="n">Real</th></tr></thead><tbody>
+    ${[...new Set([...c.usd,...c.brl].map(x=>x.fecha))].sort().reverse().map(f=>`<tr><td>${fd(f)}</td><td class="n">${fx2(c.usd.find(x=>x.fecha===f)?.valor)}</td><td class="n">${fx2(c.brl.find(x=>x.fecha===f)?.valor)}</td></tr>`).join("")}
+    </tbody></table></div></details>`:""}`;
+  $("fxReload").onclick=()=>{delete FXM.cache[key];FXM.blueSt="idle";renderFxInicio();};
+  if($("fxUse"))$("fxUse").onclick=()=>{
+    if(!confirm(`¿Usar los promedios del BCRA como TC del cierre de ${MESES[m-1]}?\n\nDólar: ${U?fx2(U.avg):"(sin cambio)"}\nReal: ${B?fx2(B.avg):"(sin cambio)"}\n\nCambia todas las conversiones de ese mes (Diario, Gastos, Saldos y Pendientes).`))return;
+    S.tc[m-1]=S.tc[m-1]||{};if(U)S.tc[m-1].usd=Math.round(U.avg*100)/100;if(B)S.tc[m-1].brl=Math.round(B.avg*100)/100;touch();render();};
+}
 function renderPN(){
   const m=MON(),y=YR(),days=new Date(y,m,0).getDate();
   const pnM=E.pasajerosMes(S,"PN Iguazú",y,m),bcM=E.pasajerosMes(S,"Icebar",y,m),fpM=E.pasajerosMes(S,"Fly Park",y,m);
@@ -757,6 +827,7 @@ function drawRegTable(){
   if(pages>1){$("pgPrev").onclick=()=>{RG.page--;drawRegTable();};$("pgNext").onclick=()=>{RG.page++;drawRegTable();};}
 }
 /* Formulario de alta / edición */
+$("dlgBody").addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches("input")){e.preventDefault();e.target.dispatchEvent(new Event("change"));}});
 let FORM=null;
 const getK=(o,k)=>k.startsWith("m.")?(o.m||[])[Number(k.slice(2))]:o[k];
 const setK=(o,k,v)=>{if(k.startsWith("m.")){o.m=o.m||Array(12).fill(null);o.m[Number(k.slice(2))]=v;}else o[k]=v;};
@@ -819,7 +890,7 @@ async function fetchFx(){
 const lastQuote=()=>[...S.cotizaciones].sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha)))[0]||null;
 let CONV={amt:100000,from:"ARS"};
 RENDER.cambio=function(){
-  if(FX.st==="idle")fetchFx();
+  if(FX.st==="idle")setTimeout(fetchFx,0);
   const q=lastQuote()||{};const m=MON();
   const avgReg=(mm,k)=>{const l=S.cotizaciones.filter(r=>{const d=parseD(r.fecha);return d&&d.y===YR()&&d.m===mm&&n(r[k]);});return l.length?l.reduce((a,r)=>a+n(r[k]),0)/l.length:0;};
   const box=(title,cls,c,v,extra,keyC,keyV)=>`<div class="card ${cls}"><div class="split"><h3>${title}</h3><span class="tag ${cls||"gray"}">${q.fecha?fd(q.fecha):"sin dato"}</span></div>
@@ -1281,9 +1352,9 @@ function exportExcel(){
   put("Gastos","GASTOS — una fila por pago",hdr(GASTOS_COLS,{J:1,L:1,M:1,N:1,O:1,P:1,Q:1},GL),S.gastos.map(r=>{const c=E.gasto(S,r);return toCols(GASTOS_COLS,r,{J:c.ars,L:c.pct,M:c.bc,N:c.ar,O:c.mes,P:c.anio,Q:c.control});}));
   put("Saldos","SALDOS AL CIERRE",hdr(SALDOS_COLS,{D:1,F:1,G:1},{A:"Fecha de cierre",B:"Sociedad",C:"Cuenta / caja",D:"Moneda",E:"Saldo",F:"Saldo en USD",G:"Mes"}),S.saldos.map(r=>{const c=E.saldo(S,r);return toCols(SALDOS_COLS,r,{D:c.moneda,F:c.usd,G:c.mes});}));
   put("Pendientes","CUENTAS A PAGAR Y A COBRAR",hdr(PEND_COLS,{I:1},{A:"Tipo",B:"Sociedad",C:"Fecha vto.",D:"Contraparte",E:"Detalle",F:"Categoría",G:"Moneda",H:"Monto",I:"Monto en $",J:"Estado",K:"Fecha cancelación"}),S.pendientes.map(r=>toCols(PEND_COLS,r,{I:E.pendiente(S,r).ars})));
-  const pxRows=[...S.pasajeros].sort((a,b)=>a.unidad.localeCompare(b.unidad)||a.anio-b.anio).map(p=>[p.unidad,p.anio,...MESES.map((_,i)=>E.pasajerosMes(S,p.unidad,p.anio,i+1)||null),MESES.reduce((a,_,i)=>a+E.pasajerosMes(S,p.unidad,p.anio,i+1),0)]);
+  const pxRows=[...S.pasajeros].sort((a,b)=>a.unidad.localeCompare(b.unidad)||a.anio-b.anio).map(p=>[p.unidad,p.anio,...MESES.map((_,i)=>typeof p.m?.[i]==="number"?p.m[i]:null),MESES.reduce((a,_,i)=>a+E.pasajerosMes(S,p.unidad,p.anio,i+1),0)]);
   put("Pasajeros","EVOLUCIÓN DE PASAJEROS",["Unidad","Año",...MES3,"Total"],pxRows,14);
-  const cfg=[["CONFIGURACIÓN"],["Exportado desde Element Park"],[],["Año del cierre",S.year],[],[],["Mes","Nombre","TC USD (promedio del mes)","TC R$ (promedio del mes)",null,"Unidad","Sociedad",null,"Sociedad","Cuenta","Moneda"]];
+  const cfg=[["CONFIGURACIÓN"],["Exportado desde Element Park"],[],["Año del cierre",S.year],[],["Mes","Nombre","TC USD (promedio del mes)","TC R$ (promedio del mes)",null,"Unidad","Sociedad",null,"Sociedad","Cuenta","Moneda"]];
   for(let i=0;i<Math.max(12,S.cuentas.length,S.units.length);i++){const r=[];if(i<12)r.push(i+1,MESES[i],S.tc[i]?.usd??null,S.tc[i]?.brl??null);else r.push(null,null,null,null);r.push(null,S.units[i]?.unidad??null,S.units[i]?.soc??null,null,S.cuentas[i]?.soc??null,S.cuentas[i]?.cuenta??null,S.cuentas[i]?.moneda??null);cfg.push(r);}
   while(cfg.length<29)cfg.push([]);cfg.push(["Imputación","Tipo","% Bajo Cero","% Arboris"]);S.plan.forEach(p=>cfg.push([p.imput,p.tipo,p.pct,typeof p.pct==="number"?1-p.pct:"Paga"]));
   const wsC=XLSX.utils.aoa_to_sheet(cfg);
