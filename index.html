@@ -218,6 +218,7 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
   <section id="pg-registros" class="page hidden"></section>
   <section id="pg-cambio" class="page hidden"></section>
   <section id="pg-estado" class="page hidden"></section>
+  <section id="pg-resumen" class="page hidden"></section>
   <section id="pg-resultados" class="page hidden"></section>
   <section id="pg-pasajeros" class="page hidden"></section>
   <section id="pg-config" class="page hidden"></section>
@@ -497,7 +498,7 @@ $("pwSave").onclick=async()=>{const a=$("pw1").value,c=$("pw2").value;
 window.addEventListener("beforeunload",e=>{if(user&&($("saveDot").classList.contains("busy")||$("saveDot").classList.contains("err"))){e.preventDefault();e.returnValue="";}});
 
 /* ---------- Navegación ---------- */
-const PAGES=[["inicio","Inicio","⌂"],["registros","Registros","▤"],["cambio","Cambio","⇄"],["estado","Estado","◔"],["resultados","Resultados","≡"],["pasajeros","Pasajeros","↗"],["config","Configuración","⚙"]];
+const PAGES=[["inicio","Inicio","⌂"],["registros","Registros","▤"],["cambio","Cambio","⇄"],["estado","Estado","◔"],["resumen","Resumen","◕"],["resultados","Resultados","≡"],["pasajeros","Pasajeros","↗"],["config","Configuración","⚙"]];
 let PAGE="inicio";
 const RENDER={};
 function renderTabs(){$("tabs").innerHTML=PAGES.map(([id,l,ic])=>`<button type="button" class="${id===PAGE?"active":""}" data-go="${id}"><span class="ic">${ic}</span>${l}</button>`).join("");
@@ -1076,6 +1077,83 @@ function renderCuenta(){
   }
   $("ctaSel").onchange=e=>{ST.cta=e.target.value;renderCuenta();};
 }
+
+/* =====================================================================
+   PÁGINA: RESUMEN (tortas por sociedad: movimientos por tipo de pago)
+   ===================================================================== */
+let RSM={per:"mes"};
+const RES_CTAS={"Bajo Cero":[["Macro","Macro"],["Santander","Santander"],["Mercado Pago","MP"],["Caja pesos","CE$"],["Caja reales","CER$"],["Caja dólares","CEUSD"]],
+  "Arboris":[["Santander","Santander"],["Mercado Pago","MP"],["Caja pesos","CE$"],["Caja reales","CER$"],["Caja dólares","CEUSD"]]};
+function torta(id,labels,vals,colors){
+  const tot=vals.reduce((a,v)=>a+v,0),el=$(id);if(!el)return;
+  if(!tot){el.parentElement.innerHTML='<div class="empty">Sin movimientos en el período.</div>';return;}
+  chart(id,{type:"doughnut",data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:"#fff"}]},
+    options:{cutout:"55%",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${money(c.parsed)} (${pct(c.parsed/tot)})`}}}}});
+}
+function tablaTorta(rows,colors,tot,cant){
+  return `<div class="tbl-wrap" style="margin-top:10px"><table class="tbl"><thead><tr><th>Tipo de pago</th>${cant?'<th class="n">Mov.</th>':""}<th class="n">Importe $</th><th class="n">%</th></tr></thead><tbody>
+  ${rows.map((r,k)=>r.sub?`<tr class="tot"><td>${esc(r.l)}</td>${cant?`<td class="n">${num(r.n)}</td>`:""}<td class="n">${money(r.v)}</td><td class="n">${tot?pct(r.v/tot):"—"}</td></tr>`:
+    `<tr><td><span class="legend-dot" style="background:${colors[r.ci]};margin-right:6px"></span>${r.ind?"&nbsp;&nbsp;&nbsp;":""}${r.l}</td>${cant?`<td class="n">${num(r.n)}</td>`:""}<td class="n">${money(r.v)}</td><td class="n">${tot?pct(r.v/tot):"—"}</td></tr>`).join("")}
+  <tr class="res"><td>Total</td>${cant?`<td class="n">${num(rows.filter(r=>!r.sub).reduce((a,r)=>a+r.n,0))}</td>`:""}<td class="n">${money(tot)}</td><td class="n">100 %</td></tr></tbody></table></div>`;
+}
+RENDER.resumen=function(){
+  const per=RSM.per,m=MON(),y=YR();
+  const perLbl=per==="mes"?MESES[m-1]+" "+y:"Enero a "+MESES[m-1]+" "+y;
+  const G=S.gastos.map(r=>[r,E.gasto(S,r)]).filter(([,c])=>inPeriod(c,per));
+  const D=S.diario.map(r=>[r,E.diario(S,r)]).filter(([,c])=>inPeriod(c,per));
+  const soc=(SOC,cls,pal)=>{
+    const lista=RES_CTAS[SOC],nombres=lista.map(x=>x[0]);
+    const pag=G.filter(([r])=>r.paga===SOC);
+    const fila=(cta,alias)=>{const g=pag.filter(([r])=>r.cuenta===cta);return {l:`${esc(cta)}${alias!==cta?` <span class="pill">${alias}</span>`:""}`,lab:alias===cta?cta:`${alias} · ${cta}`,v:g.reduce((a,[,c])=>a+c.ars,0),n:g.length,ef:/^Caja (pesos|reales|dólares)$/.test(cta)};};
+    const filas=lista.map(([c,a])=>fila(c,a));
+    const otras=pag.filter(([r])=>!nombres.includes(r.cuenta));
+    filas.push({l:'<span class="muted">Otras cuentas / sin cuenta asignada</span>',lab:"Otras / sin cuenta",v:otras.reduce((a,[,c])=>a+c.ars,0),n:otras.length});
+    const colors=filas.map((_,k)=>k===filas.length-1?"#cbd5e1":pal[Math.min(k,pal.length-1)]);
+    filas.forEach((f,k)=>f.ci=k);
+    const ef=filas.filter(f=>f.ef);
+    const rowsPag=[...filas.filter(f=>!f.ef&&f.lab!=="Otras / sin cuenta"),{sub:1,l:"Caja Efectivo (CE$ + CER$ + CEUSD)",v:ef.reduce((a,f)=>a+f.v,0),n:ef.reduce((a,f)=>a+f.n,0)},...ef.map(f=>({...f,ind:1})),filas[filas.length-1]];
+    const totPag=filas.reduce((a,f)=>a+f.v,0);
+    const ds=D.filter(([,c])=>c.soc===SOC);
+    const cob=[["Efectivo $ <span class=\"pill\">CE$</span>","CE$ · Efectivo $",x=>n(x[0].efe)],["Efectivo R$ <span class=\"pill\">CER$</span>","CER$ · Efectivo R$",x=>x[1].efeR$],["Efectivo USD <span class=\"pill\">CEUSD</span>","CEUSD · Efectivo USD",x=>x[1].efeUsd$],["Tarjeta","Tarjeta",x=>n(x[0].tarjeta)],["Página web","Página web",x=>n(x[0].pweb)]]
+      .map(([l,lab,f],k)=>({l,lab,v:ds.reduce((a,x)=>a+f(x),0),ci:k}));
+    const colC=[pal[3],pal[4],pal[5],pal[1],pal[0]];
+    const totCob=cob.reduce((a,f)=>a+f.v,0);
+    const rowsCob=[{sub:1,l:"Caja Efectivo (CE$ + CER$ + CEUSD)",v:cob.slice(0,3).reduce((a,f)=>a+f.v,0)},...cob.slice(0,3).map(f=>({...f,ind:1})),...cob.slice(3)];
+    return {SOC,cls,html:`<div class="card ${cls}"><div class="split"><h3>${SOC} S.R.L.</h3><span class="tag ${cls}">${esc(perLbl)}</span></div>
+      <p class="sub">Pagos: salen de Gastos según la cuenta o caja desde donde se pagó. Cobros: salen del Diario según el medio de cobro (R$ y USD pasados a pesos con el TC del mes).</p>
+      <div class="grid g2">
+        <div><h3 style="font-size:14px">Pagos por cuenta · ${money(totPag)}</h3><div class="chart-box sm"><canvas id="chRs${cls}P"></canvas></div>${tablaTorta(rowsPag,colors,totPag,true)}</div>
+        <div><h3 style="font-size:14px">Cobros por medio · ${money(totCob)}</h3><div class="chart-box sm"><canvas id="chRs${cls}C"></canvas></div>${tablaTorta(rowsCob,colC,totCob,false)}</div>
+      </div></div>`,
+      draw:()=>{torta(`chRs${cls}P`,filas.map(f=>f.lab),filas.map(f=>f.v),colors);torta(`chRs${cls}C`,cob.map(f=>f.lab),cob.map(f=>f.v),colC);}};
+  };
+  const A=soc(SOC_BC,"bc",BCP),B=soc(SOC_AR,"ar",ARP);
+  // Caja Buenos Aires
+  const ba=S.cajaBA.filter(r=>{const d=parseD(r.fecha);return d&&inPeriod({anio:d.y,mes:d.m},per);});
+  const sumBA=(tipo,s,k)=>ba.filter(r=>r.tipo===tipo&&(!s||r.soc===s)).reduce((a,r)=>a+calcBA(r)[k],0);
+  const cntBA=tipo=>ba.filter(r=>r.tipo===tipo).length;
+  const tipos=["IVA compras","IVA ventas"],colBA=["#94a3b8","#334155"];
+  const totBA=tipos.reduce((a,t)=>a+sumBA(t,null,"ars"),0);
+  const pos=sumBA("IVA ventas",null,"ivaArs")-sumBA("IVA compras",null,"ivaArs");
+  $("pg-resumen").innerHTML=`
+  <div class="page-head"><div><h2>Resumen</h2><p>Movimientos de cada sociedad agrupados por tipo de pago: cuentas bancarias, Mercado Pago y Caja Efectivo (CE$ pesos · CER$ reales · CEUSD dólares), más la Caja Buenos Aires (IVA compras / IVA ventas).</p></div>
+    <div class="seg"><button class="${per==="mes"?"on":""}" data-rper="mes">Mes: ${MESES[m-1]}</button><button class="${per==="anio"?"on":""}" data-rper="anio">Acumulado del año</button></div></div>
+  ${A.html}
+  <div style="margin-top:16px">${B.html}</div>
+  <div class="card" style="margin-top:16px;border-top:4px solid #475569"><div class="split"><h3>Caja Buenos Aires · IVA compras / IVA ventas</h3><span class="tag gray">${esc(perLbl)}</span></div>
+    <p class="sub">Comprobantes cargados en Registros → Caja Buenos Aires (IVA). Importes con IVA, en pesos.</p>
+    <div class="grid g2">
+      <div><div class="chart-box sm"><canvas id="chRsBA"></canvas></div></div>
+      <div><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Tipo</th><th class="n">Comprob.</th><th class="n" style="color:var(--bc-700)">BC</th><th class="n" style="color:var(--ar-700)">Arboris</th><th class="n">Total $</th><th class="n">%</th><th class="n">IVA $</th></tr></thead><tbody>
+        ${tipos.map((t,k)=>`<tr><td><span class="legend-dot" style="background:${colBA[k]};margin-right:6px"></span>${t}</td><td class="n">${num(cntBA(t))}</td><td class="n">${money(sumBA(t,SOC_BC,"ars"))}</td><td class="n">${money(sumBA(t,SOC_AR,"ars"))}</td><td class="n"><b>${money(sumBA(t,null,"ars"))}</b></td><td class="n">${totBA?pct(sumBA(t,null,"ars")/totBA):"—"}</td><td class="n">${money(sumBA(t,null,"ivaArs"))}</td></tr>`).join("")}
+        <tr class="res"><td>Posición de IVA (ventas − compras)</td><td></td><td class="n">${money(sumBA("IVA ventas",SOC_BC,"ivaArs")-sumBA("IVA compras",SOC_BC,"ivaArs"))}</td><td class="n">${money(sumBA("IVA ventas",SOC_AR,"ivaArs")-sumBA("IVA compras",SOC_AR,"ivaArs"))}</td><td class="n" colspan="3"><b>${money(pos)}</b> · ${pos>0?"saldo a pagar":"saldo a favor"}</td></tr>
+      </tbody></table></div>
+      <div class="toolbar" style="margin-top:10px"><button class="btn ghost sm" onclick="openReg('cajaBA')">Cargar comprobantes de Caja Buenos Aires</button></div></div>
+    </div></div>`;
+  $("pg-resumen").querySelectorAll("[data-rper]").forEach(x=>x.onclick=()=>{RSM.per=x.dataset.rper;render();});
+  A.draw();B.draw();
+  torta("chRsBA",tipos,tipos.map(t=>sumBA(t,null,"ars")),colBA);
+};
 
 /* =====================================================================
    PÁGINA: RESULTADOS (Resultado BC / Arboris · Punto de equilibrio · Unidades · Entre sociedades)
