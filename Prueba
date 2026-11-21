@@ -246,8 +246,8 @@ footer{text-align:center;color:var(--muted);font-size:12px;padding:20px}
    Los datos NO están dentro de este archivo: viven en Supabase, protegidos por RLS.
    ===================================================================== */
 const CONFIG={
-  SUPABASE_URL:"",      // ej. "https://xxxxxxxx.supabase.co"
-  SUPABASE_KEY:"",      // clave pública anon / publishable (nunca la service_role)
+  SUPABASE_URL:"https://bfponlporffohnsuvnmi.supabase.co",      // ej. "https://xxxxxxxx.supabase.co"
+  SUPABASE_KEY:"sb_publishable_SGXBW8sMTrH_yFfS8ujy-Q_rN39gGJ3",      // clave pública anon / publishable (nunca la service_role)
   TABLA:"element_park_state",
   USUARIOS:"ep_usuarios"
 };
